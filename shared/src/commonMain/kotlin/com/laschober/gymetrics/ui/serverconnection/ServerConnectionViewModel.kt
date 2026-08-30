@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.core.network.HttpClientProvider
+import com.laschober.gymetrics.data.local.ServerUrlStore
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -16,6 +17,7 @@ import kotlinx.serialization.Serializable
 class ServerConnectionViewModel : ViewModel() {
     private val client = HttpClientProvider.client
     var state : ServerConnectionState by mutableStateOf(ServerConnectionState.Idle)
+    private val urlStore = ServerUrlStore()
 
     private sealed interface UrlCheck {
         data class Ok(val url: String) : UrlCheck
@@ -54,13 +56,14 @@ class ServerConnectionViewModel : ViewModel() {
                 state = ServerConnectionState.Error("That doesn't look like a valid address")
 
             is UrlCheck.Ok -> {
+                val url = check.url
                 state = ServerConnectionState.Loading
                 viewModelScope.launch {
                     state = try {
-                        val response = client.get(check.url)
+                        val response = client.get(url)
                         val status = response.body<ServerStatusDto>()
                         if (status.status == "ok" && "Gymetrics backend here" in status.message){
-                            ServerConnectionState.Success(status.message)
+                            ServerConnectionState.Success(url, status.message)
                         } else {
                             ServerConnectionState.Error("Could not reach the server")
                         }
@@ -72,5 +75,18 @@ class ServerConnectionViewModel : ViewModel() {
         }
     }
 
-    fun connectToServer(){}
+    fun getSavedUrl() : String{
+        val url = urlStore.get()
+        return url ?: ""
+    }
+
+    fun storeServerUrl(){
+        val current = state
+        if (current is ServerConnectionState.Success) {
+            urlStore.save(current.url)
+        } else {
+            return
+        }
+    }
+
 }

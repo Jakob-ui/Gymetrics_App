@@ -56,6 +56,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.multiplatform.settings)
+            implementation(libs.kvault)
+            implementation(libs.compose.backhandler)
 
             // Navigation
             implementation(libs.navigation.compose)
