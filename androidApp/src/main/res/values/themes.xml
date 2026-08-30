@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Window/system theme for the Android app. This is NOT the Compose theme
+      (that lives in shared/ui/theme). It only controls what the OS draws:
+      the window background before Compose renders, and the launch splash.
+    -->
+    <style name="Theme.Gymetrics" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/app_background</item>
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <!-- false = light icons on a dark bar -->
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

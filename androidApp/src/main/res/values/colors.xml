@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches backgroundDark from the Compose theme, so splash -> app has no color jump. -->
+    <color name="app_background">#0E1513</color>
+</resources>
