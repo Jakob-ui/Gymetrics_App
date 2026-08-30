@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,7 +46,10 @@ import org.jetbrains.compose.resources.painterResource
 
 @Preview
 @Composable
-fun LoginScreen(viewModel: LoginScreenViewModel = viewModel(), onRegisterClick: () -> Unit = {}, onLoginSuccess: () -> Unit ={}) {
+fun LoginScreen(viewModel: LoginScreenViewModel = viewModel(),
+                onRegisterClick: () -> Unit = {},
+                onLoginSuccess: () -> Unit ={},
+                onServerAdressClick: () -> Unit = {}) {
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -60,6 +64,11 @@ fun LoginScreen(viewModel: LoginScreenViewModel = viewModel(), onRegisterClick: 
         if (state is LoginState.Success) {
             onLoginSuccess()
         }
+    }
+
+    Button(onClick = { onServerAdressClick()},
+    modifier = Modifier.width(5.dp).height(5.dp) ){
+        Text("zurück")
     }
 
     Column(

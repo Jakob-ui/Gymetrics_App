@@ -14,11 +14,12 @@ import com.laschober.gymetrics.ui.serverconnection.ServerConnectionScreen
 
 @Composable
 fun AppNavHost(
+    start: Any = Destinations.ServerConnectionRoute,
     navController: NavHostController = rememberNavController(),
 ) {
     NavHost(
         navController = navController,
-        startDestination = Destinations.ServerConnectionRoute,
+        startDestination = start,
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
@@ -31,6 +32,7 @@ fun AppNavHost(
         }
         composable<Destinations.LoginRoute> {
             LoginScreen(
+                onServerAdressClick = {navController.navigate(Destinations.ServerConnectionRoute)},
                 onRegisterClick = {navController.navigate(Destinations.RegisterRoute)},
                 onLoginSuccess = {navController.navigate(Destinations.HomeRoute) {
                     popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
@@ -46,7 +48,9 @@ fun AppNavHost(
             )
         }
         composable<Destinations.HomeRoute> {
-            HomeScreen()
+            HomeScreen(
+                onLogout = {navController.navigate(Destinations.LoginRoute)}
+            )
         }
     }
 }

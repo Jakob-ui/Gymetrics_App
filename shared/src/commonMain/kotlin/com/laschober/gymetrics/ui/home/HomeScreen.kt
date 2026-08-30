@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.laschober.gymetrics.data.auth.SessionManager
 import com.laschober.gymetrics.ui.auth.login.LoginScreenViewModel
 import com.laschober.gymetrics.ui.auth.login.LoginState
 import gymetrics.shared.generated.resources.OnlyLogo
@@ -48,9 +49,10 @@ import kotlin.time.Clock
 @OptIn(ExperimentalComposeUiApi::class)
 @Preview
 @Composable
-fun HomeScreen() {
+fun HomeScreen(viewModel: HomeScreenViewModel = viewModel(), onLogout: () -> Unit ={}) {
     //Todo maybe remove in the future in search for a better solution
     BackHandler {}
+    var sessionManager = SessionManager()
 
     Column(modifier = Modifier.fillMaxSize()
         .safeContentPadding()
@@ -58,5 +60,8 @@ fun HomeScreen() {
         verticalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,){
         Text(text = "Home")
+        Button(onClick = { sessionManager.logout(); onLogout()}){
+            Text("Logout")
+        }
     }
 }

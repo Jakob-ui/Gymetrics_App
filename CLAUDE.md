@@ -36,4 +36,22 @@ Doku nach via MCP mit Context 7, oder sag mir, dass du unsicher bist.
 
 ## Aktueller Stand
 
-[Hier eintragen, wo wir gerade stehen — hilft beim nächsten Start.]
+Stand 2026-08-30 (Abend). Details + Konzeptliste in `FEATURES.md`.
+
+**Läuft:** Server-Verbindungs-Check + URL speichern, Login (POST + Token speichern),
+Register, typsichere Navigation (Server → Login/Register → Home), sichere
+Token-Speicherung (KVault, `expect`/`actual`), Auth-Check beim App-Start
+(`SessionManager`: validate → refresh → routet zu Server/Login/Home), Dark-Theme,
+App-Icon, Zurück-Sperre auf Home.
+
+**Struktur:** MVVM. `ui/<feature>/` = Screen + ViewModel + `<Feature>State` (sealed).
+`data/local/` (Stores), `data/auth/` (Session), `data/remote/dto/`,
+`core/network/HttpClientProvider`. Verkabelung noch **manuell** (kein Koin aktiv).
+
+**Als Nächstes / offen:**
+- Koin einführen (ersetzt manuelles `HttpClientProvider` / `TokenStore()`-Instanziieren)
+- Ktor `Auth` (`bearer`) Plugin: Token automatisch anhängen + Auto-Refresh bei 401
+- erster echter Daten-Screen: Trainings-Liste (`GET /training`)
+- SQLDelight-Cache für Offline
+- `StateFlow` statt `mutableStateOf` in ViewModels (optional, sauberer)
+- iOS-Build testen (bisher nur Android)
