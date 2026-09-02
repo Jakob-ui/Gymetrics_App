@@ -8,8 +8,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.laschober.gymetrics.ui.auth.login.LoginScreen
+import com.laschober.gymetrics.ui.auth.profile.ProfileScreen
 import com.laschober.gymetrics.ui.auth.register.RegisterScreen
-import com.laschober.gymetrics.ui.home.HomeScreen
+import com.laschober.gymetrics.ui.main.MainScaffold
 import com.laschober.gymetrics.ui.serverconnection.ServerConnectionScreen
 
 @Composable
@@ -47,9 +48,14 @@ fun AppNavHost(
                 }}
             )
         }
+        composable<Destinations.ProfileRoute> {
+            ProfileScreen(
+                onLogoutClick = {navController.navigate(Destinations.LoginRoute)}
+            )
+        }
         composable<Destinations.HomeRoute> {
-            HomeScreen(
-                onLogout = {navController.navigate(Destinations.LoginRoute)}
+            MainScaffold(
+                onProfileClick = {navController.navigate(Destinations.ProfileRoute)}
             )
         }
     }

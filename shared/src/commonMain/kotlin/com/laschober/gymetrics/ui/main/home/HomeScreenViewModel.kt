@@ -1,4 +1,4 @@
-package com.laschober.gymetrics.ui.home
+package com.laschober.gymetrics.ui.main.home
 
 import androidx.lifecycle.ViewModel
 

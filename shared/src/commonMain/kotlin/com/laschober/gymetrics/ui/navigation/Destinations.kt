@@ -14,4 +14,7 @@ class Destinations {
 
     @Serializable
     data object HomeRoute
+
+    @Serializable
+    data object ProfileRoute
 }

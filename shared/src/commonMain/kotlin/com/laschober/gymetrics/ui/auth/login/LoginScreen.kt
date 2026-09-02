@@ -20,9 +20,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,11 +68,17 @@ fun LoginScreen(viewModel: LoginScreenViewModel = viewModel(),
         }
     }
 
-    Button(onClick = { onServerAdressClick()},
-    modifier = Modifier.width(5.dp).height(5.dp) ){
-        Text("zurück")
-    }
-
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    TextButton(onClick = { onServerAdressClick() }) {
+                        Text("<- server adress")
+                    }
+                },
+            )
+        },) {}
     Column(
         modifier = Modifier
             .fillMaxSize()
