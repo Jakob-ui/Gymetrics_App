@@ -11,19 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.laschober.gymetrics.data.auth.SessionManager
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalComposeUiApi::class)
-@Preview
 @Composable
-fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
+fun HomeScreen(viewModel: HomeScreenViewModel = koinViewModel()) {
     //Todo maybe remove in the future in search for a better solution
     BackHandler {}
-    val sessionManager = SessionManager()
-
     Column(modifier = Modifier.fillMaxSize()
         .safeContentPadding()
         .padding(10.dp),

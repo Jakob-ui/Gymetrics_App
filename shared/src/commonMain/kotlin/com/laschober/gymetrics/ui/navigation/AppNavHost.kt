@@ -8,7 +8,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.laschober.gymetrics.ui.auth.login.LoginScreen
-import com.laschober.gymetrics.ui.auth.profile.ProfileScreen
 import com.laschober.gymetrics.ui.auth.register.RegisterScreen
 import com.laschober.gymetrics.ui.main.MainScaffold
 import com.laschober.gymetrics.ui.serverconnection.ServerConnectionScreen
@@ -33,30 +32,32 @@ fun AppNavHost(
         }
         composable<Destinations.LoginRoute> {
             LoginScreen(
-                onServerAdressClick = {navController.navigate(Destinations.ServerConnectionRoute)},
-                onRegisterClick = {navController.navigate(Destinations.RegisterRoute)},
-                onLoginSuccess = {navController.navigate(Destinations.HomeRoute) {
-                    popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
-                }}
+                onServerAdressClick = { navController.navigate(Destinations.ServerConnectionRoute) },
+                onRegisterClick = { navController.navigate(Destinations.RegisterRoute) },
+                onLoginSuccess = {
+                    navController.navigate(Destinations.MainRoute) {
+                        popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
+                    }
+                },
             )
         }
         composable<Destinations.RegisterRoute> {
             RegisterScreen(
-                onLoginClick = {navController.navigate(Destinations.LoginRoute)},
-                onRegisterSuccess = {navController.navigate(Destinations.HomeRoute) {
-                    popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
-                }}
+                onLoginClick = { navController.navigate(Destinations.LoginRoute) },
+                onRegisterSuccess = { navController.navigate(Destinations.MainRoute) {
+                        popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
+                    }
+                },
             )
-        }
-        composable<Destinations.ProfileRoute> {
-            ProfileScreen(
-                onLogoutClick = {navController.navigate(Destinations.LoginRoute)}
-            )
-        }
-        composable<Destinations.HomeRoute> {
-            MainScaffold(
-                onProfileClick = {navController.navigate(Destinations.ProfileRoute)}
-            )
-        }
     }
+        composable<Destinations.MainRoute> {
+        MainScaffold(
+            onLoggedOut = {
+                navController.navigate(Destinations.LoginRoute) {
+                    popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
+            }
+    },
+    )
+}
+}
 }

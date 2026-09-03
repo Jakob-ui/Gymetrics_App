@@ -39,10 +39,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.jetbrains.compose.resources.painterResource
 import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
+import org.koin.compose.viewmodel.koinViewModel
 
 @Preview
 @Composable
-fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = viewModel(), onContinue: () -> Unit = {}) {
+fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(), onContinue: () -> Unit = {}) {
     var serverUrl by remember { mutableStateOf(viewModel.getSavedUrl()) }
     val state = viewModel.state
     val focusRequester = remember { FocusRequester() }

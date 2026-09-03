@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.laschober.gymetrics.core.network.HttpClientProvider
 import com.laschober.gymetrics.data.local.TokenStore
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,9 +17,7 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-class RegisterScreenViewModel : ViewModel() {
-    private val client = HttpClientProvider.client
-    private val tokenStore = TokenStore()
+class RegisterScreenViewModel (private val client: HttpClient, private val tokenStore: TokenStore) : ViewModel() {
 
     var state: RegisterState by mutableStateOf(RegisterState.Idle)
         private set

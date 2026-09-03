@@ -59,6 +59,7 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.kvault)
             implementation(libs.compose.backhandler)
+            implementation(libs.ktor.client.auth)
 
             // Navigation
             implementation(libs.navigation.compose)

@@ -45,10 +45,11 @@ import com.laschober.gymetrics.ui.serverconnection.ServerConnectionState
 import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @Preview
 @Composable
-fun LoginScreen(viewModel: LoginScreenViewModel = viewModel(),
+fun LoginScreen(viewModel: LoginScreenViewModel = koinViewModel(),
                 onRegisterClick: () -> Unit = {},
                 onLoginSuccess: () -> Unit ={},
                 onServerAdressClick: () -> Unit = {}) {

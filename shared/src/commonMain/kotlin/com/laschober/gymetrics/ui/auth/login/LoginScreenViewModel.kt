@@ -5,22 +5,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.laschober.gymetrics.core.network.HttpClientProvider
 import com.laschober.gymetrics.data.local.TokenStore
+import io.ktor.client.HttpClient
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
-import com.laschober.gymetrics.ui.auth.login.LoginState
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.launch
 
-class LoginScreenViewModel : ViewModel(){
-    private val client = HttpClientProvider.client
-    private val tokenStore = TokenStore()
-
+class LoginScreenViewModel (private val client : HttpClient,private val tokenStore : TokenStore) : ViewModel( ){
     var state: LoginState by mutableStateOf(LoginState.Idle)
         private set
 

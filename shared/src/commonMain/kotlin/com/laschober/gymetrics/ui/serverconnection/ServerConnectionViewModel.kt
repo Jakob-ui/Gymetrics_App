@@ -5,19 +5,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.laschober.gymetrics.core.network.HttpClientProvider
 import com.laschober.gymetrics.data.local.ServerUrlStore
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
 import io.ktor.http.Url
 import kotlinx.serialization.Serializable
 
-class ServerConnectionViewModel : ViewModel() {
-    private val client = HttpClientProvider.client
+class ServerConnectionViewModel (private val client: HttpClient, private val urlStore: ServerUrlStore,) : ViewModel() {
     var state : ServerConnectionState by mutableStateOf(ServerConnectionState.Idle)
-    private val urlStore = ServerUrlStore()
 
     private sealed interface UrlCheck {
         data class Ok(val url: String) : UrlCheck

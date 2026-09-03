@@ -39,10 +39,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @Preview
 @Composable
-fun RegisterScreen(viewModel: RegisterScreenViewModel = viewModel(), onRegisterSuccess: () -> Unit = {}, onLoginClick: () -> Unit ={}) {
+fun RegisterScreen(viewModel: RegisterScreenViewModel = koinViewModel(), onRegisterSuccess: () -> Unit = {}, onLoginClick: () -> Unit ={}) {
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
