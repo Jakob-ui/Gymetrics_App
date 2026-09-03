@@ -44,20 +44,21 @@ fun AppNavHost(
         composable<Destinations.RegisterRoute> {
             RegisterScreen(
                 onLoginClick = { navController.navigate(Destinations.LoginRoute) },
-                onRegisterSuccess = { navController.navigate(Destinations.MainRoute) {
+                onRegisterSuccess = {
+                    navController.navigate(Destinations.MainRoute) {
                         popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
                     }
                 },
             )
-    }
+        }
         composable<Destinations.MainRoute> {
-        MainScaffold(
-            onLoggedOut = {
-                navController.navigate(Destinations.LoginRoute) {
-                    popUpTo(Destinations.ServerConnectionRoute) { inclusive = true }
-            }
-    },
-    )
-}
-}
+            MainScaffold(
+                onLoggedOut = {
+                    navController.navigate(Destinations.LoginRoute) {
+                        popUpTo(Destinations.MainRoute) { inclusive = true }
+                    }
+                },
+            )
+        }
+    }
 }

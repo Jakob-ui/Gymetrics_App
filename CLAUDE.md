@@ -11,6 +11,8 @@ Code zu haben, sondern dass ich Kotlin und Kotlin Multiplatform dabei verstehe.
 
 - Ich bin **neu in Kotlin** und neu in KMP.
 - Erklärungen auf Deutsch, Code und Code-Kommentare auf Englisch.
+- **Alle sichtbaren UI-Texte in der App auf Englisch** (Labels, Buttons,
+  Fehlermeldungen, Platzhalter) — für eine breite Nutzerbasis.
 
 ## Wie du mit mir arbeiten sollst
 

@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.local.TokenStore
+import com.laschober.gymetrics.data.remote.dto.AuthResponseDto
+import com.laschober.gymetrics.data.remote.dto.RegisterRequestDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -15,27 +17,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 
-class RegisterScreenViewModel (private val client: HttpClient, private val tokenStore: TokenStore) : ViewModel() {
+class RegisterScreenViewModel(
+    private val client: HttpClient,
+    private val tokenStore: TokenStore,
+) : ViewModel() {
 
     var state: RegisterState by mutableStateOf(RegisterState.Idle)
         private set
-
-    @Serializable
-    data class  RegisterRequestDto(
-        val name: String,
-        val email: String,
-        val password: String,
-    )
-
-    @Serializable
-    data class RegisterResponseDto(
-        val userId : String,
-        val name : String,
-        val token : String,
-        val refreshToken: String,
-    )
 
     fun register(name: String, email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
@@ -53,14 +42,14 @@ class RegisterScreenViewModel (private val client: HttpClient, private val token
 
                 when {
                     response.status.isSuccess() -> {
-                        val auth = response.body<RegisterResponseDto>()
+                        val auth = response.body<AuthResponseDto>()
                         tokenStore.saveTokens(auth.token, auth.refreshToken)
                         RegisterState.Success
                     }
                     response.status == HttpStatusCode.Conflict ->
-                        RegisterState.Error("Diese E-Mail ist bereits registriert")
+                        RegisterState.Error("This email is already registered")
                     else ->
-                        RegisterState.Error("Registrierung fehlgeschlagen (${response.status.value})")
+                        RegisterState.Error("Registration failed (${response.status.value})")
                 }
             } catch (e: Exception) {
                 println("Error $e")

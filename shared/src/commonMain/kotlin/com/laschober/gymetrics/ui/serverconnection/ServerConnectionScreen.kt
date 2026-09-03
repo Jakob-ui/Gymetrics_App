@@ -35,7 +35,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.laschober.gymetrics.ui.theme.extendedColors
 import org.jetbrains.compose.resources.painterResource
 import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
@@ -97,7 +97,7 @@ fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(
                     .padding(top = 6.dp, bottom = 1.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = when (state) {
-                        is ServerConnectionState.Success -> MaterialTheme.colorScheme.onSecondary
+                        is ServerConnectionState.Success -> MaterialTheme.extendedColors.success
                         is ServerConnectionState.Error   -> MaterialTheme.colorScheme.error
                         else                             -> MaterialTheme.colorScheme.primary
                     },

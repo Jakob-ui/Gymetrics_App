@@ -1,4 +1,7 @@
 package com.laschober.gymetrics.ui.main.settings
 
-class SettingScreenViewModel {
+import androidx.lifecycle.ViewModel
+
+class SettingScreenViewModel () : ViewModel() {
+
 }

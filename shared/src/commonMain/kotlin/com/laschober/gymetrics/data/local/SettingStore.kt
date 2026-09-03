@@ -6,20 +6,19 @@ class SettingStore(
     private val settings: Settings = Settings(),
 ) {
     fun saveUrl(url: String) {
-        settings.putString(KEY, url)
+        settings.putString(URLKEY, url)
     }
 
     fun saveName(name: String) {
-        settings.putString(KEY, name)
+        settings.putString(NAMEKEY, name)
     }
 
-    fun getName(name: String) {
-        settings.putString(KEY, name)
-    }
+    fun getName(): String? = settings.getStringOrNull(NAMEKEY)
 
-    fun getUrl(): String? = settings.getStringOrNull(KEY)
+    fun getUrl(): String? = settings.getStringOrNull(URLKEY)
 
     private companion object {
-        const val KEY = "server_url"
+        const val URLKEY = "server_url"
+        const val NAMEKEY = "name"
     }
 }

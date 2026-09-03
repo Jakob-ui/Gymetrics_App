@@ -74,4 +74,9 @@ val surfaceContainerLowDark = Color(0xFF171D1B)
 val surfaceContainerDark = Color(0xFF1B211F)
 val surfaceContainerHighDark = Color(0xFF252B29)
 val surfaceContainerHighestDark = Color(0xFF303634)
-val success = Color(0xff1edf1e)
+
+// --- Extended: success (not part of Material's ColorScheme) ---
+val successLight = Color(0xFF1E7D32)
+val onSuccessLight = Color(0xFFFFFFFF)
+val successDark = Color(0xFF7FD98A)
+val onSuccessDark = Color(0xFF00390F)

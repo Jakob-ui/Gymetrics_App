@@ -8,7 +8,7 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import io.ktor.client.plugins.DefaultRequest
-import com.laschober.gymetrics.data.local.ServerUrlStore
+import com.laschober.gymetrics.data.local.SettingStore
 import com.laschober.gymetrics.data.local.TokenStore
 import com.laschober.gymetrics.data.remote.dto.AuthResponseDto
 import io.ktor.client.call.body
@@ -20,7 +20,7 @@ import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 
-fun buildHttpClient(serverUrlStore: ServerUrlStore, tokenStore: TokenStore) : HttpClient = HttpClient {
+fun buildHttpClient(settingStore: SettingStore, tokenStore: TokenStore) : HttpClient = HttpClient {
         install(Logging) {
             level = LogLevel.INFO
         }
@@ -56,7 +56,7 @@ fun buildHttpClient(serverUrlStore: ServerUrlStore, tokenStore: TokenStore) : Ht
         }
     }
         install(DefaultRequest) {
-            val base = serverUrlStore.get()
+            val base = settingStore.getUrl()
             if (base != null) {
                 url(if (base.endsWith("/")) base else "$base/")
             }

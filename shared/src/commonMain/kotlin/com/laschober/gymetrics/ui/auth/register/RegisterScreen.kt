@@ -30,12 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-
+import com.laschober.gymetrics.ui.theme.extendedColors
 import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
 import org.jetbrains.compose.resources.painterResource
@@ -95,6 +95,10 @@ fun RegisterScreen(viewModel: RegisterScreenViewModel = koinViewModel(), onRegis
                 onValueChange = { email = it },
                 label = { Text("Email") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -114,8 +118,11 @@ fun RegisterScreen(viewModel: RegisterScreenViewModel = koinViewModel(), onRegis
                         Text(if (passwordVisible) "Hide" else "Show")
                     }
                 },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {  }),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { viewModel.register(name, email, password) }),
             )
             Button(
                 onClick = { viewModel.register(name, email, password) },
@@ -124,7 +131,7 @@ fun RegisterScreen(viewModel: RegisterScreenViewModel = koinViewModel(), onRegis
                 colors = ButtonDefaults.buttonColors(
                     when (state) {
                         RegisterState.Idle -> MaterialTheme.colorScheme.primary
-                        RegisterState.Success -> MaterialTheme.colorScheme.onSecondary
+                        RegisterState.Success -> MaterialTheme.extendedColors.success
                         RegisterState.Loading -> MaterialTheme.colorScheme.primary
                         is RegisterState.Error -> MaterialTheme.colorScheme.error
                     })
@@ -141,7 +148,7 @@ fun RegisterScreen(viewModel: RegisterScreenViewModel = koinViewModel(), onRegis
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.secondary)
             ) {
-                Text("to Login")
+                Text("To login")
             }
         }
     }

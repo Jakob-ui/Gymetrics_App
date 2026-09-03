@@ -6,7 +6,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryDark,
@@ -14,7 +18,7 @@ private val DarkColorScheme = darkColorScheme(
     primaryContainer = primaryContainerDark,
     onPrimaryContainer = onPrimaryContainerDark,
     secondary = secondaryDark,
-    onSecondary = success,
+    onSecondary = onSecondaryDark,
     secondaryContainer = secondaryContainerDark,
     onSecondaryContainer = onSecondaryContainerDark,
     tertiary = tertiaryDark,
@@ -84,18 +88,37 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerHighest = surfaceContainerHighestLight,
 )
 
+// Colors Material's ColorScheme has no slot for. Reached via MaterialTheme.extendedColors.
+data class ExtendedColors(
+    val success: Color,
+    val onSuccess: Color,
+)
+
+private val DarkExtendedColors = ExtendedColors(success = successDark, onSuccess = onSuccessDark)
+private val LightExtendedColors = ExtendedColors(success = successLight, onSuccess = onSuccessLight)
+
+private val LocalExtendedColors = staticCompositionLocalOf { DarkExtendedColors }
+
+val MaterialTheme.extendedColors: ExtendedColors
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalExtendedColors.current
+
 @Composable
 fun GymetricsTheme(
     useDarkTheme: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (useDarkTheme) DarkColorScheme else LightColorScheme
+    val extendedColors = if (useDarkTheme) DarkExtendedColors else LightExtendedColors
 
     MaterialTheme(colorScheme = colorScheme) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-            content = content,
-        )
+        CompositionLocalProvider(LocalExtendedColors provides extendedColors) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+                content = content,
+            )
+        }
     }
 }
