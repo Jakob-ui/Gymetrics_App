@@ -76,6 +76,9 @@ kotlin {
             // Date/time parsing and formatting
             implementation(libs.kotlinx.datetime)
 
+            // Feather icon set (ImageVector definitions, no transitive Compose dependency)
+            implementation(libs.compose.icons.feather)
+
             // Ktor HTTP client (platform-independent part)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)

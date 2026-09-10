@@ -29,26 +29,29 @@ class TemplateRepository (private val client: HttpClient,
                           private val store: KStore<List<TemplateOverviewResponseDto>>,
                           private val connectivityObserver: ConnectivityObserver) {
 
+    // asc defaults to false = newest first. We always send it explicitly rather than relying on
+    // the backend's default (which is still asc=true on the deployed instance).
     suspend fun firstPage(
         limit: Int,
         search: String? = null,
         sortBy: TemplateSortBy? = null,
-        asc: Boolean? = null,
+        asc: Boolean = false,
     ): List<TemplateOverviewResponseDto> {
         val query = search?.trim()?.takeIf { it.isNotBlank() }
-        val isDefaultRequest = query == null && sortBy == null && asc == null
+        // The default, cacheable view: no search, default sort field, newest first.
+        val isDefaultRequest = query == null && sortBy == null && !asc
 
         // A search or a non-default sort is a plain network-only call, same as fetchPage - no
-        // cache fallback, because the only thing we ever cache is the plain, default-sorted
+        // cache fallback, because the only thing we ever cache is the plain default-sorted
         // unfiltered first page, which wouldn't match a different query or order.
         if (!isDefaultRequest) {
             check(connectivityObserver.isOnline.value) { "Offline - search/sort needs a connection" }
             val response = client.get("templates") {
                 parameter("page", 1)
                 parameter("limit", limit)
+                parameter("asc", asc)
                 if (query != null) parameter("search", query)
                 if (sortBy != null) parameter("sortBy", sortBy.apiValue)
-                if (asc != null) parameter("asc", asc)
             }
             check(response.status.isSuccess()) { "Couldn't load templates (${response.status.value})" }
             return response.body()
@@ -62,6 +65,7 @@ class TemplateRepository (private val client: HttpClient,
             val response = client.get("templates") {
                 parameter("page", 1)
                 parameter("limit", limit)
+                parameter("asc", false)
             }
             if (response.status.isSuccess()) {
                 val list = response.body<List<TemplateOverviewResponseDto>>()
@@ -90,22 +94,21 @@ class TemplateRepository (private val client: HttpClient,
         limit: Int,
         search: String? = null,
         sortBy: TemplateSortBy? = null,
-        asc: Boolean? = null,
+        asc: Boolean = false,
     ): List<TemplateOverviewResponseDto> {
         check(connectivityObserver.isOnline.value) { "Offline - skipping network call" }
         val query = search?.trim()?.takeIf { it.isNotBlank() }
         val response = client.get("templates") {
             parameter("page", 1)
             parameter("limit", limit)
+            parameter("asc", asc)
             if (query != null) parameter("search", query)
             if (sortBy != null) parameter("sortBy", sortBy.apiValue)
-            if (asc != null) parameter("asc", asc)
         }
         check(response.status.isSuccess()) { "Couldn't load templates (${response.status.value})" }
         val list = response.body<List<TemplateOverviewResponseDto>>()
-        // Only cache the plain, default-sorted unfiltered list - caching search/sort results
-        // would corrupt the offline cache.
-        if (query == null && sortBy == null && asc == null) store.set(list)
+        // Only cache the plain default view - caching search/sort results would corrupt the cache.
+        if (query == null && sortBy == null && !asc) store.set(list)
         return list
     }
 
@@ -114,16 +117,16 @@ class TemplateRepository (private val client: HttpClient,
         limit: Int,
         search: String? = null,
         sortBy: TemplateSortBy? = null,
-        asc: Boolean? = null,
+        asc: Boolean = false,
     ): List<TemplateOverviewResponseDto> {
         check(connectivityObserver.isOnline.value) { "Offline - skipping network call" }
         val query = search?.trim()?.takeIf { it.isNotBlank() }
         val response = client.get("templates") {
             parameter("page", page)
             parameter("limit", limit)
+            parameter("asc", asc)
             if (query != null) parameter("search", query)
             if (sortBy != null) parameter("sortBy", sortBy.apiValue)
-            if (asc != null) parameter("asc", asc)
         }
         check(response.status.isSuccess()) { "Couldn't load templates (${response.status.value})" }
         return response.body()

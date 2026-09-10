@@ -9,17 +9,22 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +39,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Check
+import compose.icons.feathericons.Menu
+import compose.icons.feathericons.Plus
+import compose.icons.feathericons.Trash2
 import org.koin.compose.viewmodel.koinViewModel
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -48,6 +62,7 @@ fun TemplateFormScreen(
     id: String?,
     onBack: () -> Unit,
     onSaved: () -> Unit,
+    onShowMessage: (String) -> Unit = {},
     viewModel: TemplateFormScreenViewModel = koinViewModel(),
 ) {
     LaunchedEffect(id) { viewModel.load(id) }
@@ -81,8 +96,8 @@ fun TemplateFormScreen(
                     onExerciseRemove = viewModel::removeExercise,
                     onExerciseMove = viewModel::moveExercise,
                     onAddExercise = viewModel::addExercise,
-                    onSave = { viewModel.save(onSaved) },
-                    onDelete = { viewModel.delete(onSaved) },
+                    onSave = { viewModel.save { onShowMessage("Template saved"); onSaved() } },
+                    onDelete = { viewModel.delete { onShowMessage("Template deleted"); onSaved() } },
                 )
             }
         }
@@ -103,13 +118,12 @@ private fun BoxScope.TemplateForm(
     onSave: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val haptics = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
-    // 1 header item (title/description fields + "Exercises" label) comes before the exercises
-    // in the list below, so the exercise indices need shifting by that offset - see the
-    // Reorderable docs' note on "Section Headers and Footers".
     val headerItemCount = 1
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         onExerciseMove(from.index - headerItemCount, to.index - headerItemCount)
+        haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     }
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -117,7 +131,7 @@ private fun BoxScope.TemplateForm(
     LazyColumn(
         state = lazyListState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 200.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -129,6 +143,10 @@ private fun BoxScope.TemplateForm(
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    ),
                 )
                 OutlinedTextField(
                     value = state.description,
@@ -137,6 +155,10 @@ private fun BoxScope.TemplateForm(
                     minLines = 2,
                     shape = fieldShape,
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    ),
                 )
                 if (state.error != null) {
                     Text(state.error, color = MaterialTheme.colorScheme.error)
@@ -155,7 +177,7 @@ private fun BoxScope.TemplateForm(
                         onTitleChange = { onExerciseTitleChange(exercise.localId, it) },
                         onRepsChange = { onExerciseRepsChange(exercise.localId, it) },
                         onWeightChange = { onExerciseWeightChange(exercise.localId, it) },
-                        onRemove = { onExerciseRemove(exercise.localId) },
+                        onRemove = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onExerciseRemove(exercise.localId) },
                     )
                 }
             }
@@ -163,7 +185,9 @@ private fun BoxScope.TemplateForm(
 
         item {
             OutlinedButton(onClick = onAddExercise, shape = fieldShape, modifier = Modifier.fillMaxWidth()) {
-                Text("+ Add Exercise")
+                Icon(FeatherIcons.Plus, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add Exercise")
             }
         }
     }
@@ -174,18 +198,23 @@ private fun BoxScope.TemplateForm(
             .align(Alignment.BottomEnd)
             .padding(16.dp).padding(bottom = 110.dp),
     ) {
+        Icon(FeatherIcons.Check, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
         Text(if (state.saving) "Saving…" else "Save")
     }
 
     if (!state.isNew) {
         ExtendedFloatingActionButton(
-            onClick = { showDeleteConfirm = true },
+            onClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                showDeleteConfirm = true},
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(16.dp).padding(bottom = 110.dp),
         ) {
+            Icon(FeatherIcons.Trash2, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
             Text("Delete")
         }
     }
@@ -196,7 +225,9 @@ private fun BoxScope.TemplateForm(
             title = { Text("Delete template?") },
             text = { Text("This can't be undone.") },
             confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                TextButton(onClick = { showDeleteConfirm = false
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    onDelete() }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -216,6 +247,7 @@ private fun ExerciseFormCard(
     onWeightChange: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
+    val haptics = LocalHapticFeedback.current
     Card(shape = cardShape, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -226,16 +258,25 @@ private fun ExerciseFormCard(
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next,
+                    ),
                 )
-                // Only this handle is draggable, not the whole card - so text fields stay
-                // tappable/editable instead of triggering a drag.
                 Box(
                     modifier = with(scope) {
-                        Modifier.size(40.dp).draggableHandle()
+                        Modifier.size(40.dp).draggableHandle(
+                            onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
+                            onDragStopped = { haptics.performHapticFeedback(HapticFeedbackType.GestureEnd) },
+                        )
                     },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("≡", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        imageVector = FeatherIcons.Menu,
+                        contentDescription = "Drag to reorder",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -246,6 +287,10 @@ private fun ExerciseFormCard(
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
                 )
                 OutlinedTextField(
                     value = exercise.reps,
@@ -254,6 +299,9 @@ private fun ExerciseFormCard(
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                    ),
                 )
             }
             OutlinedButton(
@@ -264,6 +312,8 @@ private fun ExerciseFormCard(
                     contentColor = MaterialTheme.colorScheme.error,
                 ),
             ) {
+                Icon(FeatherIcons.Trash2, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Delete")
             }
         }

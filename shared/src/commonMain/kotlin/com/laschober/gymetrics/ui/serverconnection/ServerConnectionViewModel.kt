@@ -70,6 +70,16 @@ class ServerConnectionViewModel(
         }
     }
 
+    // Called on every edit of the URL field - a previous check result no longer applies to the
+    // new text, so drop it back to Idle (which also disables Continue again).
+    fun resetCheck() {
+        when (state) {
+            is ServerConnectionState.Success, is ServerConnectionState.Error ->
+                state = ServerConnectionState.Idle
+            else -> {}
+        }
+    }
+
     fun getSavedUrl(): String = urlStore.getUrl() ?: ""
 
     fun storeServerUrl() {

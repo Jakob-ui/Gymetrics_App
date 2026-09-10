@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,6 +22,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -34,12 +38,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.ui.components.PullToRefreshBoxCompat
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ChevronRight
+import compose.icons.feathericons.Plus
+import compose.icons.feathericons.Search
+import compose.icons.feathericons.X
 import org.koin.compose.viewmodel.koinViewModel
 
 
@@ -48,15 +58,31 @@ fun TemplateScreen(
     viewModel: TemplateScreenViewModel = koinViewModel(),
     onTemplateClick: (id: String, title: String) -> Unit = { _, _ -> },
     onAddClick: () -> Unit = {},
-    // Real, measured height of the floating nav bar (from MainScaffold's Scaffold) - falls back
-    // to a plain guess only when this screen is used standalone (e.g. in a preview).
-    bottomPadding: Dp = 120.dp,
+    onShowMessage: (String) -> Unit = {},
+    bottomPadding: Dp = 130.dp,
 ) {
+    // A failed background reload (list already on screen) surfaces as a one-off snackbar,
+    // not a full error screen.
+    LaunchedEffect(viewModel.transientError) {
+        viewModel.transientError?.let {
+            onShowMessage(it)
+            viewModel.consumeTransientError()
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
             value = viewModel.query,
             onValueChange = viewModel::updateQuery,
             label = { Text("Search") },
+            leadingIcon = { Icon(FeatherIcons.Search, contentDescription = null) },
+            trailingIcon = {
+                if (viewModel.query.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.updateQuery("") }) {
+                        Icon(FeatherIcons.X, contentDescription = "Clear search")
+                    }
+                }
+            },
             singleLine = true,
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -73,6 +99,13 @@ fun TemplateScreen(
                 ) {
                     Text(option.label)
                 }
+            }
+        }
+
+        // Fixed-height slot so the list doesn't jump when the bar appears/disappears.
+        Box(Modifier.fillMaxWidth().height(3.dp)) {
+            if (viewModel.reloading && viewModel.state is TemplateState.Success) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         }
 
@@ -131,7 +164,9 @@ fun TemplateScreen(
 
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(if (viewModel.reloading) 0.55f else 1f),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = bottomPadding),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
@@ -206,10 +241,10 @@ private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> 
                 }
             }
 
-            Text(
-                text = "›",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                imageVector = FeatherIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -219,7 +254,7 @@ private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> 
 fun AddTemplates(onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     ExtendedFloatingActionButton(
         onClick = onClick,
-        icon = { Text("+") },
+        icon = { Icon(FeatherIcons.Plus, contentDescription = null) },
         text = { Text("Add Template") },
         modifier = modifier,
     )

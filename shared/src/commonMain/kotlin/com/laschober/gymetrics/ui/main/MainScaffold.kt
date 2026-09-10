@@ -24,9 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -35,12 +38,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.BookOpen
+import compose.icons.feathericons.Calendar
+import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Home
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -61,17 +72,18 @@ import com.laschober.gymetrics.ui.main.templates.TemplateScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.detail.TemplateFormScreen
 import com.laschober.gymetrics.ui.navigation.Destinations
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private val tabs = listOf(
-    Tab(Destinations.HomeRoute, "Home"),
-    Tab(Destinations.PlanningRoute, "Planning"),
-    Tab(Destinations.LogbookRoute, "Logbook"),
-    Tab(Destinations.TemplateRoute, "Templates"),
+    Tab(Destinations.HomeRoute, "Home", FeatherIcons.Home),
+    Tab(Destinations.PlanningRoute, "Planning", FeatherIcons.Calendar),
+    Tab(Destinations.LogbookRoute, "Logbook", FeatherIcons.BookOpen),
+    Tab(Destinations.TemplateRoute, "Templates", FeatherIcons.Copy),
 )
 
-private data class Tab(val route: Any, val label: String)
+private data class Tab(val route: Any, val label: String, val icon: ImageVector)
 
 @Composable
 fun MainScaffold(
@@ -82,6 +94,10 @@ fun MainScaffold(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val showMessage: (String) -> Unit = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
 
     val name = settingStore.getName().orEmpty()
 
@@ -98,12 +114,15 @@ fun MainScaffold(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
                     if (isCreateTemplate || isTemplateDetail) {
-                        IconButton(onClick = { navController.popBackStack() }) { Text("←") }
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {
@@ -141,16 +160,9 @@ fun MainScaffold(
             )
         },
     ) { innerPadding ->
-        // Scaffold measures FloatingNavBar's real height (including the device's navigation-bar
-        // inset, which varies) into innerPadding - use that instead of a guessed dp value, so
-        // list content padding actually clears the pill on every device.
         val bottomBarClearance = innerPadding.calculateBottomPadding() + 16.dp
 
         NavHost(
-            // EnterTransition.None/ExitTransition.None together don't mean "instant, clean swap" -
-            // the exiting screen just never animates away, so it stays fully visible while the
-            // entering one is already fully visible too, overlapping for a few frames. A very
-            // short fade avoids that while still feeling near-instant.
             enterTransition = { fadeIn(animationSpec = tween(120)) },
             exitTransition = { fadeOut(animationSpec = tween(120)) },
             popEnterTransition = { fadeIn(animationSpec = tween(120)) },
@@ -160,15 +172,12 @@ fun MainScaffold(
             modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
         ) {
             composable<Destinations.HomeRoute> { HomeScreen() }
-            composable<Destinations.LogbookRoute> { TrainingScreen(bottomPadding = bottomBarClearance) }
+            composable<Destinations.LogbookRoute> {
+                TrainingScreen(onShowMessage = showMessage, bottomPadding = bottomBarClearance)
+            }
             composable<Destinations.PlanningRoute> { Text("Planning – coming soon") }
             composable<Destinations.TemplateRoute> { entry ->
                 val viewModel: TemplateScreenViewModel = koinViewModel()
-                // TemplateFormScreen sets this flag (via previousBackStackEntry) right before
-                // popping back after a save/delete. This entry stays alive the whole time we're
-                // on TemplateDetailRoute/CreateTemplateRoute (it's still on the back stack), so
-                // its ViewModel is never recreated - without this, the list would keep showing
-                // stale data after an edit.
                 val changed by entry.savedStateHandle.getStateFlow("templatesChanged", false).collectAsState()
                 LaunchedEffect(changed) {
                     if (changed) {
@@ -180,6 +189,7 @@ fun MainScaffold(
                     viewModel = viewModel,
                     onTemplateClick = { id, title -> navController.navigate(Destinations.TemplateDetailRoute(id, title)) },
                     onAddClick = { navController.navigate(Destinations.CreateTemplateRoute) },
+                    onShowMessage = showMessage,
                     bottomPadding = bottomBarClearance,
                 )
             }
@@ -192,6 +202,7 @@ fun MainScaffold(
                         navController.previousBackStackEntry?.savedStateHandle?.set("templatesChanged", true)
                         navController.popBackStack()
                     },
+                    onShowMessage = showMessage,
                 )
             }
             composable<Destinations.CreateTemplateRoute> {
@@ -202,6 +213,7 @@ fun MainScaffold(
                         navController.previousBackStackEntry?.savedStateHandle?.set("templatesChanged", true)
                         navController.popBackStack()
                     },
+                    onShowMessage = showMessage,
                 )
             }
         }
@@ -268,7 +280,12 @@ private fun FloatingNavBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(tab.label.take(1), color = color, style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    imageVector = tab.icon,
+                    contentDescription = tab.label,
+                    tint = color,
+                    modifier = Modifier.size(20.dp),
+                )
                 Text(tab.label, color = color, style = MaterialTheme.typography.labelSmall)
             }
         }

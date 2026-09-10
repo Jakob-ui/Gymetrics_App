@@ -8,12 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.repositories.NoCachedDataException
 import com.laschober.gymetrics.data.repositories.TrainingRepository
 import kotlinx.coroutines.launch
-
-// ASCENDING (asc = null) is what firstPage()/refreshFirstPage() cache for offline use - it's what
-// the backend does by default anyway, so leaving it null keeps that path cache-eligible.
-enum class TrainingSortOption(val label: String, val asc: Boolean?) {
-    ASCENDING("Created ↑", null),
-    DESCENDING("Created ↓", false),
+// Sorted by activeDate (fixed in TrainingRepository); only direction differs.
+// NEWEST (asc = false) is the cached default view. OLDEST is always network-only.
+enum class TrainingSortOption(val label: String, val asc: Boolean) {
+    NEWEST("Newest first", asc = false),
+    OLDEST("Oldest first", asc = true),
 }
 
 class TrainingScreenViewModel(private val repository: TrainingRepository) : ViewModel() {
@@ -26,7 +25,12 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
         private set
     var refreshing: Boolean by mutableStateOf(false)
         private set
-    var sortOption: TrainingSortOption by mutableStateOf(TrainingSortOption.ASCENDING)
+    var reloading: Boolean by mutableStateOf(false)
+        private set
+    var transientError: String? by mutableStateOf(null)
+        private set
+    fun consumeTransientError() { transientError = null }
+    var sortOption: TrainingSortOption by mutableStateOf(TrainingSortOption.NEWEST)
         private set
     var activeOnly: Boolean by mutableStateOf(false)
         private set
@@ -38,7 +42,6 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
         load()
     }
 
-    // Reloads immediately - a deliberate tap, no debounce needed.
     fun selectSort(option: TrainingSortOption) {
         if (option == sortOption) return
         sortOption = option
@@ -55,23 +58,28 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
     fun load() {
         page = 0
         endReached = false
-        state = TrainingState.Loading
+        val hadContent = state is TrainingState.Success
+        if (!hadContent) state = TrainingState.Loading
+        reloading = true
         viewModelScope.launch {
-            state = try {
+            try {
                 val list = repository.firstPage(pageSize, asc = sortOption.asc, active = activeFilter)
                 page = 1
                 endReached = list.size < pageSize
-                TrainingState.Success(list)
+                state = TrainingState.Success(list)
             } catch (e: NoCachedDataException) {
-                TrainingState.Error("No data available - check your connection")
+                if (hadContent) transientError = "You're offline - showing older data"
+                else state = TrainingState.Error("No data available - check your connection")
             } catch (e: Exception) {
                 println("trainings load failed: $e")
-                TrainingState.Error("Couldn't load trainings")
+                if (hadContent) transientError = "Couldn't update the list"
+                else state = TrainingState.Error("Couldn't load trainings")
+            } finally {
+                reloading = false
             }
         }
     }
 
-    // Pull-to-refresh: keeps whatever is currently shown if the refresh itself fails.
     fun refresh() {
         if (refreshing) return
         refreshing = true

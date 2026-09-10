@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +22,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,10 +36,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.data.remote.dto.UserProfileDto
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Edit
+import compose.icons.feathericons.LogOut
+import compose.icons.feathericons.Settings
+import compose.icons.feathericons.X
+import compose.icons.feathericons.XCircle
 import org.koin.compose.viewmodel.koinViewModel
 
 // Biological sex - kept to two options because it's used for fitness calculations.
@@ -143,7 +153,9 @@ private fun ProfileContent(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = onClose) { Text("✕") }
+            IconButton(onClick = onClose) {
+                Icon(imageVector = FeatherIcons.X, contentDescription = "Close")
+            }
         }
 
         HorizontalDivider()
@@ -153,7 +165,6 @@ private fun ProfileContent(
             InfoRow("Height", profile.height, unit = "cm")
             InfoRow("Weight", profile.weight, unit = "kg")
             InfoRow("Muscle mass", profile.muscle, unit = "%")
-            InfoRow("Gym", profile.activeStudio)
         }
 
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -177,16 +188,17 @@ private fun ProfileContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.Start,
         ) {
-            ProfileMenuButton("⚙ Settings", onClick = onOpenSettings)
-            ProfileMenuButton("Edit", onClick = onEdit)
-            ProfileMenuButton("Logout", onClick = onLogout)
+            ProfileMenuButton("Settings", FeatherIcons.Settings, "Settings", onClick = onOpenSettings)
+            ProfileMenuButton("Edit", FeatherIcons.Edit, "Edit",onClick = onEdit)
+            ProfileMenuButton("Logout", FeatherIcons.LogOut, "LogOut",onClick = onLogout)
         }
     }
 }
 
 @Composable
-private fun ProfileMenuButton(label: String, onClick: () -> Unit) {
+private fun ProfileMenuButton(label: String, icon : ImageVector, description: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Icon(imageVector = icon, contentDescription = description, modifier = Modifier.padding(end = 15.dp).height(18.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
             Text(label)
         }
@@ -225,7 +237,6 @@ private fun ProfileEditContent(
         FormField("Height", form.height, numeric = true, suffixText = "cm") { onFormChange(form.copy(height = it)) }
         FormField("Weight", form.weight, numeric = true, suffixText = "kg") { onFormChange(form.copy(weight = it)) }
         FormField("Muscle mass", form.muscle, numeric = true, suffixText = "%") { onFormChange(form.copy(muscle = it)) }
-        FormField("Gym", form.activeStudio) { onFormChange(form.copy(activeStudio = it)) }
 
         if (saveError != null) {
             Text(saveError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
