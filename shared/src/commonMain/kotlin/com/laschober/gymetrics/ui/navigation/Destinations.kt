@@ -14,4 +14,10 @@ class Destinations {
     @Serializable data object LogbookRoute
     @Serializable data object PlanningRoute
     @Serializable data object TemplateRoute
+
+    // --- Inner graph: detail/create screens reached from a tab ---
+    // `title` travels with the route so the shared TopAppBar can show it immediately,
+    // without waiting for TemplateFormScreen's own GET /templates/:id to finish.
+    @Serializable data class TemplateDetailRoute(val id: String, val title: String)
+    @Serializable data object CreateTemplateRoute
 }

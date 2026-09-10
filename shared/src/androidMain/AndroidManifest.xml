@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required by ConnectivityManager (Connectivity.android.kt) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Required by Ktor's HttpClient for network requests -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

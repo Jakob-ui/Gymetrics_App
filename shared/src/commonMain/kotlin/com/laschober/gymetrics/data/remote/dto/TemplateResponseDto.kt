@@ -1,0 +1,24 @@
+package com.laschober.gymetrics.data.remote.dto
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class TemplateExerciseDto(
+    val title: String,
+    val reps: Int,
+    val weight: Double,
+    val factor: Double? = null,
+)
+
+@Serializable
+data class TemplateResponseDto(
+    val id: String,
+    val title: String,
+    val description: String = "",
+    val status: Boolean = false,
+    val icon: String = "",
+    @SerialName("created_date") val createdDate: String = "",
+    @SerialName("updated_date") val updatedDate: String = "",
+    val plan: List<TemplateExerciseDto> = emptyList(),
+)

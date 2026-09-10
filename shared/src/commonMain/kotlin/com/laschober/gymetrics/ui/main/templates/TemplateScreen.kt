@@ -16,11 +16,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,15 +36,51 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
+import com.laschober.gymetrics.ui.components.PullToRefreshBoxCompat
 import org.koin.compose.viewmodel.koinViewModel
 
 
 @Composable
-fun TemplateScreen(viewModel: TemplateScreenViewModel = koinViewModel()) {
+fun TemplateScreen(
+    viewModel: TemplateScreenViewModel = koinViewModel(),
+    onTemplateClick: (id: String, title: String) -> Unit = { _, _ -> },
+    onAddClick: () -> Unit = {},
+    // Real, measured height of the floating nav bar (from MainScaffold's Scaffold) - falls back
+    // to a plain guess only when this screen is used standalone (e.g. in a preview).
+    bottomPadding: Dp = 120.dp,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = viewModel.query,
+            onValueChange = viewModel::updateQuery,
+            label = { Text("Search") },
+            singleLine = true,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            TemplateSortOption.entries.forEachIndexed { index, option ->
+                SegmentedButton(
+                    selected = viewModel.sortOption == option,
+                    onClick = { viewModel.selectSort(option) },
+                    shape = SegmentedButtonDefaults.itemShape(index, TemplateSortOption.entries.size),
+                ) {
+                    Text(option.label)
+                }
+            }
+        }
+
+        PullToRefreshBoxCompat(
+            isRefreshing = viewModel.refreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
         when (val s = viewModel.state) {
             TemplateState.Loading -> Box(
                 modifier = Modifier.fillMaxSize(),
@@ -77,8 +118,10 @@ fun TemplateScreen(viewModel: TemplateScreenViewModel = koinViewModel()) {
                     val listState = rememberLazyListState()
                     val shouldLoadMore by remember {
                         derivedStateOf {
+                            val hasScrolled = listState.firstVisibleItemIndex > 0 ||
+                                listState.firstVisibleItemScrollOffset > 0
                             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            lastVisible >= s.templates.size - 3
+                            hasScrolled && lastVisible >= s.templates.size - 3
                         }
                     }
 
@@ -89,11 +132,11 @@ fun TemplateScreen(viewModel: TemplateScreenViewModel = koinViewModel()) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = bottomPadding),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(s.templates, key = { it.id }) { template ->
-                            TemplateCard(template)
+                            TemplateCard(template, onClick = { onTemplateClick(template.id, template.title) })
                         }
                         if (viewModel.loadingMore) {
                             item {
@@ -110,16 +153,18 @@ fun TemplateScreen(viewModel: TemplateScreenViewModel = koinViewModel()) {
         }
 
         AddTemplates(
+            onClick = onAddClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp).padding(bottom = 110.dp),
         )
+        }
     }
 }
 
 @Composable
-private fun TemplateCard(template: TemplateOverviewResponseDto) {
-    Card(onClick = { }, modifier = Modifier.fillMaxWidth()) {
+private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -171,43 +216,11 @@ private fun TemplateCard(template: TemplateOverviewResponseDto) {
 }
 
 @Composable
-fun AddTemplates(modifier: Modifier = Modifier) {
+fun AddTemplates(onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     ExtendedFloatingActionButton(
-        onClick = { },
+        onClick = onClick,
         icon = { Text("+") },
         text = { Text("Add Template") },
         modifier = modifier,
     )
-}
-
-@Composable
-fun EndlessList(
-    items: List<String>,
-    loadMore: () -> Unit,
-    loading: Boolean,
-) {
-    val listState = rememberLazyListState()
-    val buffer = 1
-    val reachedBottom by remember {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisible != null &&
-                lastVisible.index == listState.layoutInfo.totalItemsCount - buffer
-        }
-    }
-
-    LaunchedEffect(reachedBottom) {
-        if (reachedBottom && !loading) loadMore()
-    }
-
-    LazyColumn(state = listState) {
-        items(items) { item ->
-            Text(item, modifier = Modifier.padding(8.dp))
-        }
-        if (loading) {
-            item {
-                CircularProgressIndicator(modifier = Modifier.padding(8.dp))
-            }
-        }
-    }
 }

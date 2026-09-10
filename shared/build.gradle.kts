@@ -60,6 +60,9 @@ kotlin {
             implementation(libs.kvault)
             implementation(libs.compose.backhandler)
             implementation(libs.ktor.client.auth)
+            implementation(libs.kstore.core)
+            implementation(libs.kstore.file)
+            implementation(libs.reorderable)
 
             // Navigation
             implementation(libs.navigation.compose)
@@ -69,6 +72,9 @@ kotlin {
 
             // JSON serialization
             implementation(libs.kotlinx.serialization.json)
+
+            // Date/time parsing and formatting
+            implementation(libs.kotlinx.datetime)
 
             // Ktor HTTP client (platform-independent part)
             implementation(libs.ktor.client.core)
