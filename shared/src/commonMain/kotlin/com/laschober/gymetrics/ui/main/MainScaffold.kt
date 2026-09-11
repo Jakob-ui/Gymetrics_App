@@ -66,6 +66,7 @@ import com.laschober.gymetrics.data.local.SettingStore
 import com.laschober.gymetrics.data.network.ConnectivityObserver
 import com.laschober.gymetrics.ui.main.home.HomeScreen
 import com.laschober.gymetrics.ui.main.logbook.TrainingScreen
+import com.laschober.gymetrics.ui.main.planning.PlanningScreen
 import com.laschober.gymetrics.ui.main.profile.ProfileScreen
 import com.laschober.gymetrics.ui.main.settings.SettingScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreen
@@ -171,11 +172,20 @@ fun MainScaffold(
             startDestination = Destinations.HomeRoute,
             modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
         ) {
-            composable<Destinations.HomeRoute> { HomeScreen() }
+            composable<Destinations.HomeRoute> {
+                HomeScreen(
+                    // No training-execution screen yet - the button surfaces that instead of
+                    // doing nothing silently.
+                    onStartTraining = { showMessage("Starting a training isn't built yet") },
+                    onShowMessage = showMessage,
+                )
+            }
             composable<Destinations.LogbookRoute> {
                 TrainingScreen(onShowMessage = showMessage, bottomPadding = bottomBarClearance)
             }
-            composable<Destinations.PlanningRoute> { Text("Planning – coming soon") }
+            composable<Destinations.PlanningRoute> {
+                PlanningScreen(bottomPadding = bottomBarClearance, onShowMessage = showMessage)
+            }
             composable<Destinations.TemplateRoute> { entry ->
                 val viewModel: TemplateScreenViewModel = koinViewModel()
                 val changed by entry.savedStateHandle.getStateFlow("templatesChanged", false).collectAsState()

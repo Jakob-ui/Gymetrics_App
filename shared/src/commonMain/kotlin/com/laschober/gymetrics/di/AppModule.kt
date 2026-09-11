@@ -11,6 +11,7 @@ import com.laschober.gymetrics.ui.auth.login.LoginScreenViewModel
 import com.laschober.gymetrics.ui.auth.register.RegisterScreenViewModel
 import com.laschober.gymetrics.ui.main.home.HomeScreenViewModel
 import com.laschober.gymetrics.ui.main.logbook.TrainingScreenViewModel
+import com.laschober.gymetrics.ui.main.planning.PlanningScreenViewModel
 import com.laschober.gymetrics.ui.main.profile.ProfileScreenViewModel
 import com.laschober.gymetrics.ui.main.settings.SettingScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
@@ -62,4 +63,5 @@ val appModule = module {
     viewModelOf(::TemplateScreenViewModel)
     viewModelOf(::TemplateFormScreenViewModel)
     viewModelOf(::TrainingScreenViewModel)
+    viewModelOf(::PlanningScreenViewModel)
 }
