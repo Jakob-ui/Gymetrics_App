@@ -57,8 +57,6 @@ fun TrainingScreen(
     onShowMessage: (String) -> Unit = {},
     bottomPadding: Dp = 120.dp,
 ) {
-    // A failed background reload (list already on screen) surfaces as a one-off snackbar,
-    // not a full error screen.
     LaunchedEffect(viewModel.transientError) {
         viewModel.transientError?.let {
             onShowMessage(it)
@@ -90,7 +88,6 @@ fun TrainingScreen(
             )
         }
 
-        // Fixed-height slot so the list doesn't jump when the bar appears/disappears.
         Box(Modifier.fillMaxWidth().height(3.dp)) {
             if (viewModel.reloading && viewModel.state is TrainingState.Success) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -146,7 +143,12 @@ fun TrainingScreen(
                             }
                         }
 
-                        LaunchedEffect(shouldLoadMore) {
+                        // Keyed on the list size too, not just shouldLoadMore: after a page finishes
+                        // loading, the user is often still within the "near the bottom" threshold for
+                        // the now-longer list, so the boolean itself never flips (true -> true) and a
+                        // key of shouldLoadMore alone would never re-fire - silently skipping every
+                        // page after the second.
+                        LaunchedEffect(shouldLoadMore, s.trainings.size) {
                             if (shouldLoadMore) viewModel.loadNextPage()
                         }
 

@@ -79,6 +79,9 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TemplateState.Success(list)
+                // Fire-and-forget: warms the detail cache for these ids in the background so
+                // opening one is instant later. Doesn't block the list from showing.
+                viewModelScope.launch { repository.prefetchTemplateDetails(list.map { it.id }) }
             } catch (e: NoCachedDataException) {
                 if (hadContent) transientError = "You're offline - showing older data"
                 else state = TemplateState.Error("No data available - check your connection")

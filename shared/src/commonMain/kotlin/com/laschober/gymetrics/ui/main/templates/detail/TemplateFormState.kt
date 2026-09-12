@@ -20,6 +20,7 @@ data class ExerciseFormItem(
     val localId: String,
     val title: String,
     val reps: String,
+    val sets: String,
     val weight: String,
     val factor: Double?,
 )

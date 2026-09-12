@@ -41,13 +41,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeScreen(
     viewModel: HomeScreenViewModel = koinViewModel(),
-    onStartTraining: (trainingId: String) -> Unit = {},
+    onStartTraining: (trainingId: String, title: String) -> Unit = { _, _ -> },
     onShowMessage: (String) -> Unit = {},
 ) {
-    // Runs every time this composable enters composition - i.e. on first load AND every time
-    // the Home tab is switched back to (the NavHost disposes/recomposes tab content on each
-    // visit even though the ViewModel itself survives). Keeps the card from going stale after
-    // e.g. scheduling or deleting a training in Planning.
     LaunchedEffect(Unit) { viewModel.loadNextTraining() }
 
     LaunchedEffect(viewModel.transientError) {
@@ -85,7 +81,6 @@ fun HomeScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Fixed-height slot so the bar appearing/disappearing doesn't shift the card below.
         Box(Modifier.fillMaxWidth().height(3.dp)) {
             if (viewModel.reloading && viewModel.nextTraining is NextTrainingState.Success) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -140,7 +135,7 @@ fun HomeScreen(
                 } else {
                     NextTrainingCard(
                         training = training,
-                        onStartTraining = { onStartTraining(training.id) },
+                        onStartTraining = { onStartTraining(training.id, training.title) },
                         modifier = Modifier.alpha(if (viewModel.reloading) 0.55f else 1f),
                     )
                 }
@@ -209,7 +204,6 @@ private fun NextTrainingCard(
     }
 }
 
-// Only "Today"/"Tomorrow" get a badge - anything further out is just the date chip above.
 private fun relativeDayLabel(iso: String): String? {
     val date = parseLocalDate(iso) ?: return null
     return when (date.toEpochDays() - todayLocalDate().toEpochDays()) {

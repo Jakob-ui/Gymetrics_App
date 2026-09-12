@@ -6,23 +6,18 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
-import com.laschober.gymetrics.data.remote.dto.UserProfileDto
+import com.laschober.gymetrics.data.repositories.HomeRepository
 import com.laschober.gymetrics.data.repositories.TrainingRepository
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 
 sealed interface NextTrainingState {
     data object Loading : NextTrainingState
-    // training == null means nothing is scheduled - a valid, non-error result.
     data class Success(val training: TrainingOverviewResponseDto?) : NextTrainingState
     data class Error(val message: String) : NextTrainingState
 }
 
 class HomeScreenViewModel(
-    private val client: HttpClient,
+    private val homeRepository: HomeRepository,
     private val trainingRepository: TrainingRepository,
 ) : ViewModel() {
 
@@ -39,21 +34,12 @@ class HomeScreenViewModel(
 
     init {
         loadGreetingName()
-        // loadNextTraining() is NOT called here - HomeScreen calls it from a LaunchedEffect(Unit)
-        // every time the Home tab is entered, not just once. The NavHost keeps this ViewModel
-        // alive across tab switches, so without that the card would go stale after e.g.
-        // scheduling/deleting a training in Planning.
     }
-
-    // Best-effort - the greeting just falls back to no name if this fails, not worth its own
-    // error state.
+    
     private fun loadGreetingName() {
         viewModelScope.launch {
             try {
-                val response = client.get("user/profile")
-                if (response.status.isSuccess()) {
-                    greetingName = response.body<UserProfileDto>().name
-                }
+                greetingName = homeRepository.getGreetingName()
             } catch (e: Exception) {
                 println("home: loading profile failed: $e")
             }
@@ -61,10 +47,19 @@ class HomeScreenViewModel(
     }
 
     fun loadNextTraining() {
-        val hadContent = nextTraining is NextTrainingState.Success
-        if (!hadContent) nextTraining = NextTrainingState.Loading
         reloading = true
         viewModelScope.launch {
+            if (nextTraining !is NextTrainingState.Success) {
+                try {
+                    trainingRepository.getCachedNextTraining()?.let {
+                        nextTraining = NextTrainingState.Success(it.training)
+                    }
+                } catch (e: Exception) {
+                    println("home: reading cached next training failed: $e")
+                }
+            }
+
+            val hadContent = nextTraining is NextTrainingState.Success
             try {
                 val result = trainingRepository.getNextTraining()
                 nextTraining = NextTrainingState.Success(result)

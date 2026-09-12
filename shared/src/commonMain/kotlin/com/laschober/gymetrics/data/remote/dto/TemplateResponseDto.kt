@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class TemplateExerciseDto(
     val title: String,
     val reps: Int,
+    val sets: Int = 0,
     val weight: Double,
     val factor: Double? = null,
 )

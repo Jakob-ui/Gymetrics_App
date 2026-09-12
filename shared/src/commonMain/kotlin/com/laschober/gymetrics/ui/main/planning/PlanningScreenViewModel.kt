@@ -41,8 +41,6 @@ class PlanningScreenViewModel(
     var refreshTrigger: Int by mutableStateOf(0)
         private set
 
-    private val monthCache = mutableMapOf<Pair<Int, Int>, List<TrainingOverviewResponseDto>>()
-
     val weekStart: LocalDate
         get() = weekDatesFor(weekOffset).first()
 
@@ -58,8 +56,10 @@ class PlanningScreenViewModel(
     suspend fun loadWeek(offset: Int): PlanningState {
         val dates = weekDatesFor(offset)
         return try {
+            // getTrainingsForMonth is cache-first and persists across restarts (TrainingRepository),
+            // so repeated weeks/months don't hit the network again.
             val months = dates.map { it.year to (it.month.ordinal + 1) }.distinct()
-            val trainings = months.flatMap { (year, month) -> monthTrainings(year, month) }
+            val trainings = months.flatMap { (year, month) -> repository.getTrainingsForMonth(year, month) }
             val byDate = trainings
                 .mapNotNull { training -> parseLocalDate(training.activeDate)?.let { date -> date to training } }
                 .filter { (date, _) -> date in dates }
@@ -71,12 +71,14 @@ class PlanningScreenViewModel(
         }
     }
 
-    private suspend fun monthTrainings(year: Int, month: Int): List<TrainingOverviewResponseDto> {
-        val key = year to month
-        monthCache[key]?.let { return it }
-        val list = repository.getTrainingsForMonth(year, month)
-        monthCache[key] = list
-        return list
+    // Pull-to-refresh: getTrainingsForMonth is cache-first, so a plain reload would just serve the
+    // same cached months again. This clears the months this week touches first, then reloads -
+    // the explicit "get fresh data" escape hatch, same idea as Templates'/Logbook's
+    // refreshFirstPage().
+    suspend fun refreshWeek(offset: Int): PlanningState {
+        val months = weekDatesFor(offset).map { it.year to (it.month.ordinal + 1) }.distinct()
+        months.forEach { (year, month) -> repository.invalidateMonthCache(year, month) }
+        return loadWeek(offset)
     }
 
     private fun mondayOf(date: LocalDate): LocalDate = date.minus(date.dayOfWeek.ordinal, DateTimeUnit.DAY)
@@ -104,8 +106,10 @@ class PlanningScreenViewModel(
         dialogError = null
         viewModelScope.launch {
             try {
+                // Invalidating the month cache is TrainingRepository's job now - it only actually
+                // happens once the create really reaches the server (immediately, or later via
+                // SyncManager if this was queued offline), not before.
                 repository.createTraining(templateId, date.toString())
-                monthCache.remove(date.year to (date.month.ordinal + 1))
                 refreshTrigger++
                 onCreated()
             } catch (e: Exception) {
@@ -117,14 +121,13 @@ class PlanningScreenViewModel(
         }
     }
 
-    fun deleteTraining(date: LocalDate, trainingId: String, onDeleted: () -> Unit) {
+    fun deleteTraining(trainingId: String, onDeleted: () -> Unit) {
         if (deletingTraining) return
         deletingTraining = true
         dialogError = null
         viewModelScope.launch {
             try {
                 repository.deleteTraining(trainingId)
-                monthCache.remove(date.year to (date.month.ordinal + 1))
                 refreshTrigger++
                 onDeleted()
             } catch (e: Exception) {

@@ -44,6 +44,7 @@ class TemplateFormScreenViewModel(
                             localId = newLocalId(),
                             title = it.title,
                             reps = it.reps.toString(),
+                            sets = it.sets.toString(),
                             weight = it.weight.toString(),
                             factor = it.factor,
                         )
@@ -65,7 +66,16 @@ class TemplateFormScreenViewModel(
     fun updateDescription(value: String) = update { it.copy(description = value) }
 
     fun addExercise() = update {
-        it.copy(exercises = it.exercises + ExerciseFormItem(newLocalId(), title = "", reps = "", weight = "", factor = null))
+        it.copy(
+            exercises = it.exercises + ExerciseFormItem(
+                newLocalId(),
+                title = "",
+                reps = "",
+                sets = "",
+                weight = "",
+                factor = null,
+            ),
+        )
     }
 
     fun removeExercise(localId: String) = update { editing ->
@@ -80,6 +90,10 @@ class TemplateFormScreenViewModel(
         editing.copy(exercises = editing.exercises.map { if (it.localId == localId) it.copy(reps = value) else it })
     }
 
+    fun updateExerciseSets(localId: String, value: String) = update { editing ->
+        editing.copy(exercises = editing.exercises.map { if (it.localId == localId) it.copy(sets = value) else it })
+    }
+
     fun updateExerciseWeight(localId: String, value: String) = update { editing ->
         editing.copy(exercises = editing.exercises.map { if (it.localId == localId) it.copy(weight = value) else it })
     }
@@ -91,7 +105,12 @@ class TemplateFormScreenViewModel(
 
     fun save(onSaved: () -> Unit) {
         val current = state
-        if (current !is TemplateFormState.Editing || current.title.isBlank()) return
+        if (current !is TemplateFormState.Editing) return
+        if (current.title.isBlank()) {
+            // Previously a silent no-op - clicking Save with an empty title did nothing at all.
+            update { it.copy(error = "Please enter a title") }
+            return
+        }
         state = current.copy(saving = true, error = null)
         viewModelScope.launch {
             try {
@@ -103,6 +122,7 @@ class TemplateFormScreenViewModel(
                         TemplateExerciseDto(
                             title = it.title,
                             reps = it.reps.toIntOrNull() ?: 0,
+                            sets = it.sets.toIntOrNull() ?: 0,
                             weight = it.weight.toDoubleOrNull() ?: 0.0,
                             factor = it.factor,
                         )
@@ -116,7 +136,10 @@ class TemplateFormScreenViewModel(
                 onSaved()
             } catch (e: Exception) {
                 println("template save failed: $e")
-                update { it.copy(saving = false, error = "Couldn't save template") }
+                // The repository's own exception messages are already specific (e.g. "Offline -
+                // can't create a template", "Couldn't create template (400)") - showing them
+                // beats a generic message that hides what actually went wrong.
+                update { it.copy(saving = false, error = e.message ?: "Couldn't save template") }
             }
         }
     }
@@ -131,7 +154,7 @@ class TemplateFormScreenViewModel(
                 onDeleted()
             } catch (e: Exception) {
                 println("template delete failed: $e")
-                update { it.copy(saving = false, error = "Couldn't delete template") }
+                update { it.copy(saving = false, error = e.message ?: "Couldn't delete template") }
             }
         }
     }

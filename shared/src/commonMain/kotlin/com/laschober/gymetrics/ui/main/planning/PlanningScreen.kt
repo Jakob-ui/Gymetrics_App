@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
+import com.laschober.gymetrics.ui.components.PullToRefreshBoxCompat
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Activity
 import compose.icons.feathericons.CheckCircle
@@ -131,7 +132,9 @@ private fun WeekPage(
 ) {
     var state by remember(weekOffset) { mutableStateOf<PlanningState>(PlanningState.Loading) }
     var reloading by remember(weekOffset) { mutableStateOf(false) }
+    var refreshing by remember(weekOffset) { mutableStateOf(false) }
     var retryTick by remember(weekOffset) { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     // Reloads when this page's week changes, when a training was created/deleted anywhere
     // (refreshTrigger), or on "Try again" (retryTick). If a result already exists, it stays on
@@ -159,42 +162,64 @@ private fun WeekPage(
             }
         }
 
-        when (val s = state) {
-            PlanningState.Loading -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+        PullToRefreshBoxCompat(
+            isRefreshing = refreshing,
+            onRefresh = {
+                scope.launch {
+                    refreshing = true
+                    try {
+                        // getTrainingsForMonth is cache-first, so a plain reload would just serve
+                        // the same cached months again - refreshWeek() explicitly invalidates
+                        // them first, same escape hatch as Templates'/Logbook's pull-to-refresh.
+                        when (val result = viewModel.refreshWeek(weekOffset)) {
+                            is PlanningState.Success -> state = result
+                            is PlanningState.Error -> onShowMessage(result.message)
+                            PlanningState.Loading -> Unit
+                        }
+                    } finally {
+                        refreshing = false
+                    }
+                }
+            },
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            when (val s = state) {
+                PlanningState.Loading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
 
-            is PlanningState.Error -> Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = s.message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(onClick = { retryTick++ }) { Text("Try again") }
-            }
-
-            is PlanningState.Success -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (reloading) 0.55f else 1f),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(weekDates, key = { it.toString() }) { date ->
-                    val trainings = s.trainingsByDate[date].orEmpty()
-                    DayRow(
-                        date = date,
-                        trainings = trainings,
-                        isToday = date == viewModel.today,
-                        onClick = { onDayClick(date, trainings) },
+                is PlanningState.Error -> Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = s.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Button(onClick = { retryTick++ }) { Text("Try again") }
+                }
+
+                is PlanningState.Success -> LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (reloading) 0.55f else 1f),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(weekDates, key = { it.toString() }) { date ->
+                        val trainings = s.trainingsByDate[date].orEmpty()
+                        DayRow(
+                            date = date,
+                            trainings = trainings,
+                            isToday = date == viewModel.today,
+                            onClick = { onDayClick(date, trainings) },
+                        )
+                    }
                 }
             }
         }
@@ -304,12 +329,6 @@ private fun TrainingRow(training: TrainingOverviewResponseDto, isToday: Boolean)
     val mutedColor = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(
-            imageVector = FeatherIcons.Activity,
-            contentDescription = null,
-            tint = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp),
-        )
         Text(
             text = training.title,
             style = MaterialTheme.typography.bodyLarge,
@@ -428,7 +447,7 @@ private fun DayDetailDialog(
                 TextButton(
                     enabled = !viewModel.deletingTraining,
                     onClick = {
-                        viewModel.deleteTraining(date, training.id) { pendingDelete = null }
+                        viewModel.deleteTraining(training.id) { pendingDelete = null }
                     },
                 ) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)

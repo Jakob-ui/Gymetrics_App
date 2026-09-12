@@ -86,12 +86,16 @@ fun TemplateFormScreen(
             }
 
             is TemplateFormState.Editing -> {
+                LaunchedEffect(s.error) {
+                    s.error?.let { onShowMessage(it) }
+                }
                 TemplateForm(
                     state = s,
                     onTitleChange = viewModel::updateTitle,
                     onDescriptionChange = viewModel::updateDescription,
                     onExerciseTitleChange = viewModel::updateExerciseTitle,
                     onExerciseRepsChange = viewModel::updateExerciseReps,
+                    onExerciseSetsChange = viewModel::updateExerciseSets,
                     onExerciseWeightChange = viewModel::updateExerciseWeight,
                     onExerciseRemove = viewModel::removeExercise,
                     onExerciseMove = viewModel::moveExercise,
@@ -111,6 +115,7 @@ private fun BoxScope.TemplateForm(
     onDescriptionChange: (String) -> Unit,
     onExerciseTitleChange: (String, String) -> Unit,
     onExerciseRepsChange: (String, String) -> Unit,
+    onExerciseSetsChange: (String, String) -> Unit,
     onExerciseWeightChange: (String, String) -> Unit,
     onExerciseRemove: (String) -> Unit,
     onExerciseMove: (Int, Int) -> Unit,
@@ -160,9 +165,6 @@ private fun BoxScope.TemplateForm(
                         imeAction = ImeAction.Next
                     ),
                 )
-                if (state.error != null) {
-                    Text(state.error, color = MaterialTheme.colorScheme.error)
-                }
                 Text("Exercises", style = MaterialTheme.typography.titleMedium)
             }
         }
@@ -176,6 +178,7 @@ private fun BoxScope.TemplateForm(
                         exercise = exercise,
                         onTitleChange = { onExerciseTitleChange(exercise.localId, it) },
                         onRepsChange = { onExerciseRepsChange(exercise.localId, it) },
+                        onSetsChange = { onExerciseSetsChange(exercise.localId, it) },
                         onWeightChange = { onExerciseWeightChange(exercise.localId, it) },
                         onRemove = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onExerciseRemove(exercise.localId) },
                     )
@@ -244,6 +247,7 @@ private fun ExerciseFormCard(
     exercise: ExerciseFormItem,
     onTitleChange: (String) -> Unit,
     onRepsChange: (String) -> Unit,
+    onSetsChange: (String) -> Unit,
     onWeightChange: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -284,6 +288,18 @@ private fun ExerciseFormCard(
                     value = exercise.weight,
                     onValueChange = onWeightChange,
                     label = { Text("Weight (kg)") },
+                    singleLine = true,
+                    shape = fieldShape,
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
+                )
+                OutlinedTextField(
+                    value = exercise.sets,
+                    onValueChange = onSetsChange,
+                    label = { Text("Sets") },
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.weight(1f),

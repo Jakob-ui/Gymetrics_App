@@ -20,4 +20,5 @@ class Destinations {
     // without waiting for TemplateFormScreen's own GET /templates/:id to finish.
     @Serializable data class TemplateDetailRoute(val id: String, val title: String)
     @Serializable data object CreateTemplateRoute
+    @Serializable data class TrainingExecutionRoute(val id: String, val title: String)
 }

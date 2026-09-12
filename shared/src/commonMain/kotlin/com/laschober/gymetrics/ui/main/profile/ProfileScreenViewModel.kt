@@ -9,6 +9,7 @@ import com.laschober.gymetrics.data.auth.SessionManager
 import com.laschober.gymetrics.data.local.SettingStore
 import com.laschober.gymetrics.data.remote.dto.UserProfileDto
 import com.laschober.gymetrics.data.remote.dto.UserUpdateRequestDto
+import com.laschober.gymetrics.data.repositories.HomeRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -32,6 +33,7 @@ data class ProfileForm(
 class ProfileScreenViewModel(
     private val client: HttpClient,
     private val sessionManager: SessionManager,
+    private val homeRepository: HomeRepository,
     settingStore: SettingStore,
 ) : ViewModel() {
 
@@ -62,7 +64,12 @@ class ProfileScreenViewModel(
             val next = try {
                 val response = client.get("user/profile")
                 if (response.status.isSuccess()) {
-                    ProfileState.Success(response.body<UserProfileDto>())
+                    val profile = response.body<UserProfileDto>()
+                    // This screen always fetches fresh (it's where you'd notice a stale name),
+                    // so it's the natural place to keep Home's cached copy (HomeRepository) up
+                    // to date too - covers both the initial load and the reload after save().
+                    homeRepository.cacheProfile(profile)
+                    ProfileState.Success(profile)
                 } else {
                     ProfileState.Error("Couldn't load profile (${response.status.value})")
                 }

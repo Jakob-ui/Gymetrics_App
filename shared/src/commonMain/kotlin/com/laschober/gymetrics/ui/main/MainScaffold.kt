@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +54,7 @@ import compose.icons.feathericons.BookOpen
 import compose.icons.feathericons.Calendar
 import compose.icons.feathericons.Copy
 import compose.icons.feathericons.Home
+import compose.icons.feathericons.UploadCloud
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -72,6 +75,8 @@ import com.laschober.gymetrics.ui.main.settings.SettingScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.detail.TemplateFormScreen
+import com.laschober.gymetrics.ui.main.training.TrainingExecutionScreen
+import com.laschober.gymetrics.data.sync.SyncManager
 import com.laschober.gymetrics.ui.navigation.Destinations
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -91,6 +96,10 @@ fun MainScaffold(
     navController: NavHostController = rememberNavController(),
     settingStore: SettingStore = koinInject(),
     connectivityObserver: ConnectivityObserver = koinInject(),
+    // Injecting it here (even though only the badge uses it) guarantees SyncManager is
+    // constructed - and so already watching connectivity to drain the queue - for as long as the
+    // user is anywhere in the main app shell, not just when a screen happens to need it.
+    syncManager: SyncManager = koinInject(),
     onLoggedOut: () -> Unit = {},
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -107,10 +116,12 @@ fun MainScaffold(
 
     val isCreateTemplate = currentDestination?.hasRoute(Destinations.CreateTemplateRoute::class) == true
     val isTemplateDetail = currentDestination?.hasRoute(Destinations.TemplateDetailRoute::class) == true
+    val isTrainingExecution = currentDestination?.hasRoute(Destinations.TrainingExecutionRoute::class) == true
 
     val title = when {
         isCreateTemplate -> "New Template"
         isTemplateDetail -> backStackEntry?.toRoute<Destinations.TemplateDetailRoute>()?.title ?: "Template"
+        isTrainingExecution -> backStackEntry?.toRoute<Destinations.TrainingExecutionRoute>()?.title ?: "Training"
         else -> tabs.firstOrNull { currentDestination?.hasRoute(it.route::class) == true }?.label ?: "Home"
     }
 
@@ -120,7 +131,7 @@ fun MainScaffold(
             TopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
-                    if (isCreateTemplate || isTemplateDetail) {
+                    if (isCreateTemplate || isTemplateDetail || isTrainingExecution) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                         }
@@ -135,6 +146,22 @@ fun MainScaffold(
                             modifier = Modifier.padding(end = 8.dp),
                         ) {
                             Text("Offline!")
+                        }
+                    }
+                    val pendingCount by syncManager.pendingCount.collectAsState()
+                    if (pendingCount > 0) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) {
+                            Icon(
+                                imageVector = FeatherIcons.UploadCloud,
+                                contentDescription = "Waiting to sync",
+                                modifier = Modifier.size(12.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("$pendingCount")
                         }
                     }
                     IconButton(onClick = { showProfile = true }) {
@@ -174,9 +201,9 @@ fun MainScaffold(
         ) {
             composable<Destinations.HomeRoute> {
                 HomeScreen(
-                    // No training-execution screen yet - the button surfaces that instead of
-                    // doing nothing silently.
-                    onStartTraining = { showMessage("Starting a training isn't built yet") },
+                    onStartTraining = { id, title ->
+                        navController.navigate(Destinations.TrainingExecutionRoute(id, title))
+                    },
                     onShowMessage = showMessage,
                 )
             }
@@ -225,6 +252,10 @@ fun MainScaffold(
                     },
                     onShowMessage = showMessage,
                 )
+            }
+            composable<Destinations.TrainingExecutionRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<Destinations.TrainingExecutionRoute>()
+                TrainingExecutionScreen(id = route.id, onShowMessage = showMessage)
             }
         }
 

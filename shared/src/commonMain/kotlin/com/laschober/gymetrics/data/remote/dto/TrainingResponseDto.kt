@@ -7,6 +7,9 @@ import kotlinx.serialization.Serializable
 data class TrainingExerciseDto(
     val title: String,
     val reps: Int,
+    // Not copied from the template on the backend yet - defaults to 0 (meaning "not set") until
+    // that's wired up, so the UI treats it as a single implied set for now.
+    val sets: Int = 0,
     val repsDone: Int? = null,
     val weight: Double? = null,
     val weightDone: Double? = null,

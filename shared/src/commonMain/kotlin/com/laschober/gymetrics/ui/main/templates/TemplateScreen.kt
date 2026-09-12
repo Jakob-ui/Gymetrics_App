@@ -160,7 +160,12 @@ fun TemplateScreen(
                         }
                     }
 
-                    LaunchedEffect(shouldLoadMore) {
+                    // Keyed on the list size too, not just shouldLoadMore: after a page finishes
+                    // loading, the user is often still within the "near the bottom" threshold for
+                    // the now-longer list, so the boolean itself never flips (true -> true) and a
+                    // key of shouldLoadMore alone would never re-fire - silently skipping every
+                    // page after the second.
+                    LaunchedEffect(shouldLoadMore, s.templates.size) {
                         if (shouldLoadMore) viewModel.loadNextPage()
                     }
 
