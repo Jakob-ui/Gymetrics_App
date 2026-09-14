@@ -17,8 +17,27 @@ class SettingStore(
 
     fun getUrl(): String? = settings.getStringOrNull(URLKEY)
 
+    fun saveThemeMode(mode: ThemeMode) {
+        settings.putString(THEMEMODEKEY, mode.name)
+    }
+
+    fun toggleSetup(mode: Boolean) {
+        settings.putBoolean(SETUP, mode)
+    }
+
+    fun getSetupStatus() : Boolean? {
+        return settings.getBooleanOrNull(SETUP)
+    }
+
+    fun getThemeMode(): ThemeMode =
+        settings.getStringOrNull(THEMEMODEKEY)?.let { saved ->
+            runCatching { ThemeMode.valueOf(saved) }.getOrNull()
+        } ?: ThemeMode.DARK
+
     private companion object {
         const val URLKEY = "server_url"
         const val NAMEKEY = "name"
+        const val THEMEMODEKEY = "theme_mode"
+        const val SETUP = "setup"
     }
 }

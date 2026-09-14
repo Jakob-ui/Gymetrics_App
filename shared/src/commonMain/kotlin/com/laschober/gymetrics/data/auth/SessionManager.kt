@@ -17,6 +17,9 @@ class SessionManager(
 ) {
     suspend fun resolveSession(): SessionState {
         if (tokenStore.accessToken() == null || tokenStore.refreshToken() == null) {
+            if(settingStore.getSetupStatus() == false){
+                return SessionState.NeedsServer
+            }
             return SessionState.NeedsLogin
         }
 
@@ -35,6 +38,7 @@ class SessionManager(
     }
 
     fun logout() {
+        settingStore.toggleSetup(false)
         tokenStore.clear()
         client.authProvider<BearerAuthProvider>()?.clearToken()
     }

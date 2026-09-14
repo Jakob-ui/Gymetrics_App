@@ -49,11 +49,8 @@ import compose.icons.feathericons.X
 import compose.icons.feathericons.XCircle
 import org.koin.compose.viewmodel.koinViewModel
 
-// Biological sex - kept to two options because it's used for fitness calculations.
-// The backend stores it as a free string, so this is a frontend constraint.
 private val sexOptions = listOf("Male", "Female")
 
-// Rendered as the content of the profile Dialog/Card (see MainScaffold).
 @Composable
 fun ProfileScreen(
     viewModel: ProfileScreenViewModel = koinViewModel(),

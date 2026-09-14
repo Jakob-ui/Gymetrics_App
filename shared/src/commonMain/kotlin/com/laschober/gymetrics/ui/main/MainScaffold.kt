@@ -3,12 +3,16 @@ package com.laschober.gymetrics.ui.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +28,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,14 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.ArrowLeft
-import compose.icons.feathericons.BookOpen
-import compose.icons.feathericons.Calendar
-import compose.icons.feathericons.Copy
-import compose.icons.feathericons.Home
-import compose.icons.feathericons.UploadCloud
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -67,6 +64,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.laschober.gymetrics.data.local.SettingStore
 import com.laschober.gymetrics.data.network.ConnectivityObserver
+import com.laschober.gymetrics.data.sync.SyncManager
 import com.laschober.gymetrics.ui.main.home.HomeScreen
 import com.laschober.gymetrics.ui.main.logbook.TrainingScreen
 import com.laschober.gymetrics.ui.main.planning.PlanningScreen
@@ -75,9 +73,17 @@ import com.laschober.gymetrics.ui.main.settings.SettingScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.detail.TemplateFormScreen
+import com.laschober.gymetrics.ui.main.training.TrainingDetailScreen
 import com.laschober.gymetrics.ui.main.training.TrainingExecutionScreen
-import com.laschober.gymetrics.data.sync.SyncManager
 import com.laschober.gymetrics.ui.navigation.Destinations
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.BookOpen
+import compose.icons.feathericons.Calendar
+import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Globe
+import compose.icons.feathericons.Home
+import compose.icons.feathericons.UploadCloud
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -96,9 +102,6 @@ fun MainScaffold(
     navController: NavHostController = rememberNavController(),
     settingStore: SettingStore = koinInject(),
     connectivityObserver: ConnectivityObserver = koinInject(),
-    // Injecting it here (even though only the badge uses it) guarantees SyncManager is
-    // constructed - and so already watching connectivity to drain the queue - for as long as the
-    // user is anywhere in the main app shell, not just when a screen happens to need it.
     syncManager: SyncManager = koinInject(),
     onLoggedOut: () -> Unit = {},
 ) {
@@ -117,11 +120,13 @@ fun MainScaffold(
     val isCreateTemplate = currentDestination?.hasRoute(Destinations.CreateTemplateRoute::class) == true
     val isTemplateDetail = currentDestination?.hasRoute(Destinations.TemplateDetailRoute::class) == true
     val isTrainingExecution = currentDestination?.hasRoute(Destinations.TrainingExecutionRoute::class) == true
+    val isTrainingDetail = currentDestination?.hasRoute(Destinations.TrainingDetailRoute::class) == true
 
     val title = when {
         isCreateTemplate -> "New Template"
         isTemplateDetail -> backStackEntry?.toRoute<Destinations.TemplateDetailRoute>()?.title ?: "Template"
         isTrainingExecution -> backStackEntry?.toRoute<Destinations.TrainingExecutionRoute>()?.title ?: "Training"
+        isTrainingDetail -> backStackEntry?.toRoute<Destinations.TrainingDetailRoute>()?.title ?: "Training"
         else -> tabs.firstOrNull { currentDestination?.hasRoute(it.route::class) == true }?.label ?: "Home"
     }
 
@@ -131,7 +136,7 @@ fun MainScaffold(
             TopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
-                    if (isCreateTemplate || isTemplateDetail || isTrainingExecution) {
+                    if (isCreateTemplate || isTemplateDetail || isTrainingExecution || isTrainingDetail) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                         }
@@ -139,31 +144,15 @@ fun MainScaffold(
                 },
                 actions = {
                     val isOnline by connectivityObserver.isOnline.collectAsState()
-                    if (!isOnline) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                            modifier = Modifier.padding(end = 8.dp),
-                        ) {
-                            Text("Offline!")
-                        }
-                    }
+                    var badgesExpanded by remember { mutableStateOf(false) }
                     val pendingCount by syncManager.pendingCount.collectAsState()
-                    if (pendingCount > 0) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.tertiary,
-                            contentColor = MaterialTheme.colorScheme.onTertiary,
-                            modifier = Modifier.padding(end = 8.dp),
-                        ) {
-                            Icon(
-                                imageVector = FeatherIcons.UploadCloud,
-                                contentDescription = "Waiting to sync",
-                                modifier = Modifier.size(12.dp),
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("$pendingCount")
-                        }
-                    }
+                    InfoBadges(
+                        isOnline = isOnline,
+                        pendingCount = pendingCount,
+                        expanded = badgesExpanded,
+                        onClick = { badgesExpanded = !badgesExpanded }
+                    )
+
                     IconButton(onClick = { showProfile = true }) {
                         Box(
                             modifier = Modifier.size(36.dp).clip(CircleShape)
@@ -208,7 +197,11 @@ fun MainScaffold(
                 )
             }
             composable<Destinations.LogbookRoute> {
-                TrainingScreen(onShowMessage = showMessage, bottomPadding = bottomBarClearance)
+                TrainingScreen(
+                    onShowMessage = showMessage,
+                    onTrainingClick = { id, title -> navController.navigate(Destinations.TrainingDetailRoute(id, title)) },
+                    bottomPadding = bottomBarClearance,
+                )
             }
             composable<Destinations.PlanningRoute> {
                 PlanningScreen(bottomPadding = bottomBarClearance, onShowMessage = showMessage)
@@ -255,7 +248,15 @@ fun MainScaffold(
             }
             composable<Destinations.TrainingExecutionRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<Destinations.TrainingExecutionRoute>()
-                TrainingExecutionScreen(id = route.id, onShowMessage = showMessage)
+                TrainingExecutionScreen(
+                    id = route.id,
+                    onCompleted = { navController.popBackStack() },
+                    onShowMessage = showMessage,
+                )
+            }
+            composable<Destinations.TrainingDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<Destinations.TrainingDetailRoute>()
+                TrainingDetailScreen(id = route.id)
             }
         }
 
@@ -297,7 +298,8 @@ private fun FloatingNavBar(
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 24.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f))
+            .pointerInput(Unit) { detectTapGestures {} }
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -308,15 +310,21 @@ private fun FloatingNavBar(
                 ?.any { it.hasRoute(tab.route::class) } == true
 
             val color = if (selected) {
-                MaterialTheme.colorScheme.onSurface
+                MaterialTheme.colorScheme.onPrimaryContainer
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val background = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                Color.Transparent
             }
 
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onSelect(tab.route) }
+                    .background(background)
+                    .clickable { if (!selected) onSelect(tab.route) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -352,5 +360,70 @@ private fun SettingsOverlay(onClose: () -> Unit) {
 
     LaunchedEffect(visible.isIdle) {
         if (visible.isIdle && !visible.currentState) onClose()
+    }
+}
+
+
+@Composable
+private fun InfoBadges(isOnline: Boolean, pendingCount: Int, expanded: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(end = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (!isOnline) {
+            ExpandableBadge(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+                icon = FeatherIcons.Globe,
+                iconDescription = "Globe",
+                label = "Offline",
+                expanded = expanded,
+            )
+        }
+        if (pendingCount > 0) {
+            ExpandableBadge(
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary,
+                icon = FeatherIcons.UploadCloud,
+                iconDescription = "Waiting to sync",
+                label = "$pendingCount",
+                expanded = expanded,
+            )
+        }
+    }
+}
+
+// Icon-only pill that reveals a trailing label via AnimatedVisibility's own
+// expandHorizontally/shrinkHorizontally - unlike animateContentSize, this doesn't clip its
+// content to a stale intermediate size mid-animation, which is what caused the badges to
+// visually overflow their row on the right when expanding.
+@Composable
+private fun ExpandableBadge(
+    containerColor: Color,
+    contentColor: Color,
+    icon: ImageVector,
+    iconDescription: String,
+    label: String,
+    expanded: Boolean,
+) {
+    Badge(containerColor = containerColor, contentColor = contentColor) {
+        Icon(imageVector = icon, contentDescription = iconDescription, modifier = Modifier.size(12.dp))
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(4.dp))
+                Text(label)
+            }
+        }
     }
 }

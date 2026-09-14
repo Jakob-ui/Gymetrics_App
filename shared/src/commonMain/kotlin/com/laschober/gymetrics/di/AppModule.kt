@@ -5,6 +5,8 @@ import com.laschober.gymetrics.data.repositories.HomeRepository
 import com.laschober.gymetrics.data.repositories.PendingActionQueueRepository
 import com.laschober.gymetrics.data.repositories.TemplateRepository
 import com.laschober.gymetrics.data.repositories.TrainingDraftRepository
+import com.laschober.gymetrics.data.repositories.StudioRepository
+import com.laschober.gymetrics.data.repositories.ThemeModeRepository
 import com.laschober.gymetrics.data.repositories.TrainingRepository
 import com.laschober.gymetrics.data.sync.SyncManager
 import com.laschober.gymetrics.data.auth.SessionManager
@@ -19,6 +21,7 @@ import com.laschober.gymetrics.ui.main.planning.PlanningScreenViewModel
 import com.laschober.gymetrics.ui.main.profile.ProfileScreenViewModel
 import com.laschober.gymetrics.ui.main.settings.SettingScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
+import com.laschober.gymetrics.ui.main.training.TrainingDetailScreenViewModel
 import com.laschober.gymetrics.ui.main.training.TrainingExecutionScreenViewModel
 import com.laschober.gymetrics.ui.serverconnection.ServerConnectionViewModel
 import org.koin.core.module.dsl.viewModelOf
@@ -41,14 +44,12 @@ import kotlinx.io.files.Path
 val appModule = module {
 
     single { SettingStore() }
+    single { ThemeModeRepository(get()) }
+    single { StudioRepository(get()) }
     single { ConnectivityObserver() }
     single { TokenStore() }
     single { buildHttpClient(get(), get()) }
     single { SessionManager(get(), get(), get(), get()) }
-    // Named qualifiers: Kotlin's generic type parameters are erased at runtime, so without a
-    // name, Koin can't tell KStore<List<TemplateOverviewResponseDto>> and
-    // KStore<List<TrainingOverviewResponseDto>> apart - both just look like "a KStore" to it,
-    // and one repository silently gets the other's store.
     single(named("templatesStore")) {
         storeOf<List<TemplateOverviewResponseDto>>(
             file = Path("${platformFilesDir()}/templates.json"),
@@ -139,4 +140,5 @@ val appModule = module {
     viewModelOf(::TrainingScreenViewModel)
     viewModelOf(::PlanningScreenViewModel)
     viewModelOf(::TrainingExecutionScreenViewModel)
+    viewModelOf(::TrainingDetailScreenViewModel)
 }

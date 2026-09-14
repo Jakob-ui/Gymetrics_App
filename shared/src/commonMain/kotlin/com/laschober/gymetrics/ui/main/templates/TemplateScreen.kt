@@ -198,7 +198,7 @@ fun TemplateScreen(
             onClick = onAddClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp).padding(bottom = 110.dp),
+                .padding(16.dp).padding(bottom = 160.dp),
         )
         }
     }

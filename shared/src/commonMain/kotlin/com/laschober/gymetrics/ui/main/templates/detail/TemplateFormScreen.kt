@@ -199,7 +199,7 @@ private fun BoxScope.TemplateForm(
         onClick = onSave,
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(16.dp).padding(bottom = 110.dp),
+            .padding(16.dp).padding(bottom = 160.dp),
     ) {
         Icon(FeatherIcons.Check, contentDescription = null)
         Spacer(Modifier.width(8.dp))
@@ -214,7 +214,7 @@ private fun BoxScope.TemplateForm(
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(16.dp).padding(bottom = 110.dp),
+                .padding(16.dp).padding(bottom = 160.dp),
         ) {
             Icon(FeatherIcons.Trash2, contentDescription = null)
             Spacer(Modifier.width(8.dp))

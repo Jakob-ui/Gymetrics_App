@@ -46,6 +46,7 @@ class LoginScreenViewModel(
                         val auth = response.body<AuthResponseDto>()
                         tokenStore.saveTokens(auth.token, auth.refreshToken)
                         settingStore.saveName(auth.name)
+                        settingStore.toggleSetup(true)
                         LoginState.Success
                     }
                     HttpStatusCode.Unauthorized ->

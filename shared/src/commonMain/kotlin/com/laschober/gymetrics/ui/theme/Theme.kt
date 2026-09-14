@@ -1,5 +1,6 @@
 package com.laschober.gymetrics.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -11,6 +12,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.laschober.gymetrics.data.local.ThemeMode
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryDark,
@@ -106,10 +108,14 @@ val MaterialTheme.extendedColors: ExtendedColors
 
 @Composable
 fun GymetricsTheme(
-    useDarkTheme: Boolean = true,
+    themeMode: ThemeMode = ThemeMode.DARK,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (useDarkTheme) DarkColorScheme else LightColorScheme
+    val systemDark = isSystemInDarkTheme()
+    val useDarkTheme = if (themeMode == ThemeMode.DEVICE) systemDark else themeMode == ThemeMode.DARK
+    val dynamicScheme = if (themeMode == ThemeMode.DEVICE) dynamicColorScheme(systemDark) else null
+
+    val colorScheme = dynamicScheme ?: if (useDarkTheme) DarkColorScheme else LightColorScheme
     val extendedColors = if (useDarkTheme) DarkExtendedColors else LightExtendedColors
 
     MaterialTheme(colorScheme = colorScheme) {

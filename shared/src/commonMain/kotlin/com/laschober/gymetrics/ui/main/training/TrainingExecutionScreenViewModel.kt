@@ -19,6 +19,11 @@ class TrainingExecutionScreenViewModel(
         private set
     var restoredDraft: TrainingDraft? by mutableStateOf(null)
         private set
+    var completing: Boolean by mutableStateOf(false)
+        private set
+    var completeError: String? by mutableStateOf(null)
+        private set
+    fun consumeCompleteError() { completeError = null }
 
     fun load(id: String) {
         state = TrainingExecutionState.Loading
@@ -44,6 +49,28 @@ class TrainingExecutionScreenViewModel(
                 draftRepository.saveDraft(draft)
             } catch (e: Exception) {
                 println("training execution: saving draft failed: $e")
+            }
+        }
+    }
+
+    // Sets active=false. If offline, TrainingRepository queues it and returns normally - so
+    // onCompleted() still runs (and the draft still gets cleared) even before it's actually
+    // synced, matching how "Add training"/"Delete training" already behave in Planning.
+    fun completeTraining(onCompleted: () -> Unit) {
+        if (completing) return
+        val trainingId = (state as? TrainingExecutionState.Success)?.training?.id ?: return
+        completing = true
+        completeError = null
+        viewModelScope.launch {
+            try {
+                repository.completeTraining(trainingId)
+                draftRepository.clearDraft(trainingId)
+                onCompleted()
+            } catch (e: Exception) {
+                println("training execution: complete training failed: $e")
+                completeError = e.message ?: "Couldn't complete training"
+            } finally {
+                completing = false
             }
         }
     }

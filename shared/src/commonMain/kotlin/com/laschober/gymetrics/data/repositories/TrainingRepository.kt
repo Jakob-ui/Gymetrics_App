@@ -14,6 +14,7 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -22,9 +23,6 @@ import io.ktor.http.isSuccess
 
 private const val TRAINING_SORT_BY = "activeDate"
 
-// The backend answers 404 "No Trainings found" for an empty result set instead of 200 + [] - this
-// normalizes that (and any other empty-collection 404) to an empty list rather than an error, so
-// e.g. deleting your last training doesn't leave a stale list stuck on screen forever.
 private suspend fun HttpResponse.toTrainingList(): List<TrainingOverviewResponseDto> = when {
     status == HttpStatusCode.NotFound -> emptyList()
     status.isSuccess() -> body()
@@ -46,7 +44,6 @@ class TrainingRepository(
         asc: Boolean = false,
         active: Boolean? = null,
     ): List<TrainingOverviewResponseDto> {
-        // The default, cacheable view: newest first, no active filter.
         val isDefaultRequest = !asc && active == null
 
         if (!isDefaultRequest) {
@@ -61,8 +58,6 @@ class TrainingRepository(
             return response.toTrainingList()
         }
 
-        // Cache-first: a cached snapshot is returned immediately without touching the network at
-        // all. Pull-to-refresh (refreshFirstPage) is the explicit way to force a fresh fetch.
         val cached = store.get()
         if (!cached.isNullOrEmpty()) return cached
 
@@ -116,9 +111,9 @@ class TrainingRepository(
         return response.toTrainingList()
     }
 
-    // Cache-first, persisted across app restarts (unlike PlanningScreenViewModel's old in-memory
-    // map). A month with zero trainings is cached as an empty list, distinct from "never fetched"
-    // (a missing map entry) - both correctly avoid a refetch.
+    // The backend answers this endpoint with the full detail shape (_id, plan, ...) rather than
+    // the overview one, so this deserializes as TrainingResponseDto and maps down to the overview
+    // shape that the rest of Planning (state, cache, UI) works with everywhere else.
     suspend fun getTrainingsForMonth(year: Int, month: Int): List<TrainingOverviewResponseDto> {
         val key = monthKey(year, month)
         val cachedMonths = monthCacheStore.get() ?: emptyMap()
@@ -129,17 +124,35 @@ class TrainingRepository(
             parameter("year", year)
             parameter("month", month)
         }
-        val list: List<TrainingOverviewResponseDto> = when {
+        val details: List<TrainingResponseDto> = when {
             response.status == HttpStatusCode.NotFound -> emptyList()
             response.status.isSuccess() -> response.body()
             else -> error("Couldn't load trainings for $year-$month (${response.status.value})")
         }
+
+        // Free bonus: since the full detail already came through, warm the per-id detail cache
+        // with it too, instead of throwing that data away.
+        if (details.isNotEmpty()) {
+            val currentDetails = detailStore.get() ?: emptyMap()
+            detailStore.set(currentDetails + details.associateBy { it.id })
+        }
+
+        val list = details.map { it.toOverview() }
         monthCacheStore.set(cachedMonths + (key to list))
         return list
     }
 
-    // Called after creating/deleting a training so the affected month is re-fetched next time
-    // instead of serving the now-stale cached list.
+    private fun TrainingResponseDto.toOverview() = TrainingOverviewResponseDto(
+        id = id,
+        title = title,
+        description = description,
+        status = active,
+        icon = icon,
+        activeDate = activeDate,
+        createdDate = createdAt,
+        updatedDate = updatedAt,
+    )
+
     suspend fun invalidateMonthCache(year: Int, month: Int) {
         val cachedMonths = monthCacheStore.get() ?: return
         val key = monthKey(year, month)
@@ -156,8 +169,6 @@ class TrainingRepository(
         return year to month
     }
 
-    // Offline: queued instead of failing outright. PlanningScreenViewModel's "Add training"
-    // button closes either way, and it'll actually appear once SyncManager syncs it later.
     suspend fun createTraining(templateId: String, activeDate: String) {
         if (!connectivityObserver.isOnline.value) {
             pendingActionQueue.enqueue(PendingAction.CreateTraining(newActionId(), templateId, activeDate))
@@ -171,7 +182,6 @@ class TrainingRepository(
         parseYearMonth(activeDate)?.let { (year, month) -> invalidateMonthCache(year, month) }
     }
 
-    // Same offline queueing as createTraining.
     suspend fun deleteTraining(id: String) {
         if (!connectivityObserver.isOnline.value) {
             pendingActionQueue.enqueue(PendingAction.DeleteTraining(newActionId(), id))
@@ -180,30 +190,33 @@ class TrainingRepository(
         val response = client.delete("training/$id")
         check(response.status.isSuccess()) { "Couldn't delete training (${response.status.value})" }
         invalidateTrainingDetail(id)
-        // The id alone doesn't say which month this training was in, so the whole month cache is
-        // cleared rather than tracked - Planning just refetches whichever month it's next asked
-        // to show.
         monthCacheStore.set(emptyMap())
     }
 
-    // Cache-first, keyed by id. The backend returns [training, previousTraining?] - the second
-    // element (for the "compare to last time" feature) isn't used yet, so only the requested
-    // training itself is cached. That also means a cache hit here can't serve the comparison
-    // feature once it's built - that'll need to bypass this cache or fetch separately.
+    suspend fun completeTraining(id: String) {
+        if (!connectivityObserver.isOnline.value) {
+            pendingActionQueue.enqueue(PendingAction.CompleteTraining(newActionId(), id))
+            return
+        }
+        val response = client.put("training/$id")
+        check(response.status.isSuccess()) { "Couldn't complete training (${response.status.value})" }
+        invalidateTrainingDetail(id)
+        store.set(emptyList())
+        monthCacheStore.set(emptyMap())
+        nextTrainingCacheStore.set(emptyList())
+    }
+
     suspend fun getTraining(id: String): List<TrainingResponseDto> {
         detailStore.get()?.get(id)?.let { return listOf(it) }
 
         check(connectivityObserver.isOnline.value) { "Offline - can't load this training" }
         val response = client.get("training/$id")
-        check(response.status.isSuccess()) { "Couldn't load training (${response.status.value})" }
+        check(response.status.isSuccess()) { "Couldn't training (${response.status.value})" }
         val result = response.body<List<TrainingResponseDto>>()
         result.firstOrNull()?.let { cacheTrainingDetail(it) }
         return result
     }
 
-    // Called after the list's first page loads with the ids it already knows about, so opening
-    // one of them later is instant. Best-effort and silent, and skips ids already cached - see
-    // TemplateRepository.prefetchTemplateDetails for the same pattern.
     suspend fun prefetchTrainingDetails(ids: List<String>) {
         val cached = detailStore.get() ?: emptyMap()
         val missing = ids.filterNot { it in cached }
@@ -234,10 +247,6 @@ class TrainingRepository(
         if (id in current) detailStore.set(current - id)
     }
 
-    // Stale-while-revalidate, not cache-first: this always hits the network (Home needs it fresh -
-    // it changes whenever a training is scheduled/deleted in Planning). getCachedNextTraining()
-    // is only for seeding the UI with the last known answer instantly on a cold start, while this
-    // fetches and overwrites it with the real, current answer right after.
     suspend fun getNextTraining(): TrainingOverviewResponseDto? {
         check(connectivityObserver.isOnline.value) { "Offline - can't load your next training" }
         val response = client.get("training/nextTraining")

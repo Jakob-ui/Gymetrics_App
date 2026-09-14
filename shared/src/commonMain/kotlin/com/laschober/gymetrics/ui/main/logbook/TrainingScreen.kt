@@ -1,6 +1,7 @@
 package com.laschober.gymetrics.ui.main.logbook
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun TrainingScreen(
     viewModel: TrainingScreenViewModel = koinViewModel(),
     onShowMessage: (String) -> Unit = {},
+    onTrainingClick: (id: String, title: String) -> Unit = { _, _ -> },
     bottomPadding: Dp = 120.dp,
 ) {
     LaunchedEffect(viewModel.transientError) {
@@ -161,7 +163,7 @@ fun TrainingScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             items(s.trainings, key = { it.id }) { training ->
-                                TrainingCard(training)
+                                TrainingCard(training, onClick = { onTrainingClick(training.id, training.title) })
                             }
                             if (viewModel.loadingMore) {
                                 item {
@@ -181,9 +183,9 @@ fun TrainingScreen(
 }
 
 @Composable
-private fun TrainingCard(training: TrainingOverviewResponseDto) {
+private fun TrainingCard(training: TrainingOverviewResponseDto, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {

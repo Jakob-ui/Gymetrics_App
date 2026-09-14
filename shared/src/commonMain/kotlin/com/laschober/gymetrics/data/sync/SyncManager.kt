@@ -51,6 +51,7 @@ class SyncManager(
         when (action) {
             is PendingAction.CreateTraining -> trainingRepository.createTraining(action.templateId, action.activeDate)
             is PendingAction.DeleteTraining -> trainingRepository.deleteTraining(action.trainingId)
+            is PendingAction.CompleteTraining -> trainingRepository.completeTraining(action.trainingId)
         }
     }
 }

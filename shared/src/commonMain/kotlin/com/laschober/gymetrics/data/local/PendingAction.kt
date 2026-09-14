@@ -18,4 +18,10 @@ sealed interface PendingAction {
         override val id: String,
         val trainingId: String,
     ) : PendingAction
+
+    @Serializable
+    data class CompleteTraining(
+        override val id: String,
+        val trainingId: String,
+    ) : PendingAction
 }

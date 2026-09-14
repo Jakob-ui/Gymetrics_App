@@ -37,8 +37,6 @@ class ProfileScreenViewModel(
     settingStore: SettingStore,
 ) : ViewModel() {
 
-    // The server the app is currently talking to. Read once - it doesn't change
-    // while this screen is open.
     val serverUrl: String = settingStore.getUrl().orEmpty()
 
     var state: ProfileState by mutableStateOf(ProfileState.Loading)

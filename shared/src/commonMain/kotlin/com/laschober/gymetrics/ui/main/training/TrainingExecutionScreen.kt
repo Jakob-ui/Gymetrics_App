@@ -53,10 +53,18 @@ private val cardShape = RoundedCornerShape(20.dp)
 @Composable
 fun TrainingExecutionScreen(
     id: String,
+    onCompleted: () -> Unit = {},
     onShowMessage: (String) -> Unit = {},
     viewModel: TrainingExecutionScreenViewModel = koinViewModel(),
 ) {
     LaunchedEffect(id) { viewModel.load(id) }
+
+    LaunchedEffect(viewModel.completeError) {
+        viewModel.completeError?.let {
+            onShowMessage(it)
+            viewModel.consumeCompleteError()
+        }
+    }
 
     when (val s = viewModel.state) {
         TrainingExecutionState.Loading -> Box(
@@ -78,8 +86,14 @@ fun TrainingExecutionScreen(
         is TrainingExecutionState.Success -> TrainingExecutionForm(
             training = s.training,
             restoredDraft = viewModel.restoredDraft,
+            completing = viewModel.completing,
             onEntriesChanged = { entries -> viewModel.saveDraft(TrainingDraft(s.training.id, entries)) },
-            onFinish = { onShowMessage("Saving a finished training isn't built yet") },
+            onFinish = {
+                viewModel.completeTraining {
+                    onShowMessage("Training completed")
+                    onCompleted()
+                }
+            },
         )
     }
 }
@@ -88,6 +102,7 @@ fun TrainingExecutionScreen(
 private fun TrainingExecutionForm(
     training: TrainingResponseDto,
     restoredDraft: TrainingDraft?,
+    completing: Boolean,
     onEntriesChanged: (List<ExerciseEntry>) -> Unit,
     onFinish: () -> Unit,
 ) {
@@ -149,14 +164,14 @@ private fun TrainingExecutionForm(
         }
 
         ExtendedFloatingActionButton(
-            onClick = onFinish,
+            onClick = { if (!completing) onFinish() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp).padding(bottom = 110.dp),
+                .padding(16.dp).padding(bottom = 160.dp),
         ) {
             Icon(FeatherIcons.Check, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Finish training")
+            Text(if (completing) "Finishing…" else "Finish training")
         }
     }
 }

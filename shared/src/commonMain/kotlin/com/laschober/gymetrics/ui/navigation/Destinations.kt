@@ -21,4 +21,5 @@ class Destinations {
     @Serializable data class TemplateDetailRoute(val id: String, val title: String)
     @Serializable data object CreateTemplateRoute
     @Serializable data class TrainingExecutionRoute(val id: String, val title: String)
+    @Serializable data class TrainingDetailRoute(val id: String, val title: String)
 }

@@ -56,8 +56,6 @@ class PlanningScreenViewModel(
     suspend fun loadWeek(offset: Int): PlanningState {
         val dates = weekDatesFor(offset)
         return try {
-            // getTrainingsForMonth is cache-first and persists across restarts (TrainingRepository),
-            // so repeated weeks/months don't hit the network again.
             val months = dates.map { it.year to (it.month.ordinal + 1) }.distinct()
             val trainings = months.flatMap { (year, month) -> repository.getTrainingsForMonth(year, month) }
             val byDate = trainings
@@ -71,10 +69,6 @@ class PlanningScreenViewModel(
         }
     }
 
-    // Pull-to-refresh: getTrainingsForMonth is cache-first, so a plain reload would just serve the
-    // same cached months again. This clears the months this week touches first, then reloads -
-    // the explicit "get fresh data" escape hatch, same idea as Templates'/Logbook's
-    // refreshFirstPage().
     suspend fun refreshWeek(offset: Int): PlanningState {
         val months = weekDatesFor(offset).map { it.year to (it.month.ordinal + 1) }.distinct()
         months.forEach { (year, month) -> repository.invalidateMonthCache(year, month) }
@@ -106,9 +100,6 @@ class PlanningScreenViewModel(
         dialogError = null
         viewModelScope.launch {
             try {
-                // Invalidating the month cache is TrainingRepository's job now - it only actually
-                // happens once the create really reaches the server (immediately, or later via
-                // SyncManager if this was queued offline), not before.
                 repository.createTraining(templateId, date.toString())
                 refreshTrigger++
                 onCreated()
