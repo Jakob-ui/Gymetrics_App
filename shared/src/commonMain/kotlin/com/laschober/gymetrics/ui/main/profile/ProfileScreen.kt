@@ -1,6 +1,7 @@
 package com.laschober.gymetrics.ui.main.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
@@ -37,11 +40,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.laschober.gymetrics.data.local.SettingStore
 import com.laschober.gymetrics.data.remote.dto.UserProfileDto
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Circle
 import compose.icons.feathericons.Edit
 import compose.icons.feathericons.LogOut
 import compose.icons.feathericons.Settings
@@ -87,6 +95,7 @@ fun ProfileScreen(
                 ProfileContent(
                     profile = state.profile,
                     serverUrl = viewModel.serverUrl,
+                    aiMode = viewModel.aiMode,
                     onClose = onBack,
                     onEdit = viewModel::startEditing,
                     onOpenSettings = onOpenSettings,
@@ -107,6 +116,7 @@ private fun ProfileContent(
     onEdit: () -> Unit,
     onOpenSettings: () -> Unit,
     onLogout: () -> Unit,
+    aiMode: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -169,18 +179,34 @@ private fun ProfileContent(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = "Connected to",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "Connected to",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (aiMode) {
+                        ElevatedCard(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),) {
+                            Text(
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+                                text = "Ai",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    }
+                }
+
                 Text(
                     text = serverUrl.ifBlank { "—" },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
-
+        val uriHandler = LocalUriHandler.current
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.Start,
@@ -188,6 +214,22 @@ private fun ProfileContent(
             ProfileMenuButton("Settings", FeatherIcons.Settings, "Settings", onClick = onOpenSettings)
             ProfileMenuButton("Edit", FeatherIcons.Edit, "Edit",onClick = onEdit)
             ProfileMenuButton("Logout", FeatherIcons.LogOut, "LogOut",onClick = onLogout)
+            Row (modifier = Modifier.padding(2.dp).fillMaxWidth().padding(top = 5.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                text = "Github",
+                modifier = Modifier.clickable() { uriHandler.openUri("https://github.com/Jakob-ui/Gymetrics-Backend") }, style = MaterialTheme.typography.bodySmall
+            )
+                Icon(imageVector = FeatherIcons.Circle, contentDescription = "spacer", modifier = Modifier.padding(end = 15.dp, start =15.dp).height(5.dp))
+            Text(
+                text = "Website",
+                modifier = Modifier.clickable() { uriHandler.openUri("https://gymetrics.at") }, style = MaterialTheme.typography.bodySmall
+            )
+                Icon(imageVector = FeatherIcons.Circle, contentDescription = "spacer", modifier = Modifier.padding(end = 15.dp, start =15.dp).height(5.dp))
+            Text(
+                text = "Developer",
+                modifier = Modifier.clickable() { uriHandler.openUri("https://github.com/Jakob-ui") }, style = MaterialTheme.typography.bodySmall
+            )
+            }
         }
     }
 }

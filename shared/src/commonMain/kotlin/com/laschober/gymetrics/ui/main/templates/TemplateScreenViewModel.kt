@@ -5,9 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.laschober.gymetrics.data.remote.dto.GenerationStatus
+import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.data.repositories.NoCachedDataException
 import com.laschober.gymetrics.data.repositories.TemplateRepository
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,6 +48,7 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
 
     private var page = 0
     private val pageSize = 10
+    private var pollJob: Job? = null
 
     init {
         load()
@@ -79,6 +84,7 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TemplateState.Success(list)
+                schedulePollIfNeeded(list)
                 // Fire-and-forget: warms the detail cache for these ids in the background so
                 // opening one is instant later. Doesn't block the list from showing.
                 viewModelScope.launch { repository.prefetchTemplateDetails(list.map { it.id }) }
@@ -108,10 +114,32 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TemplateState.Success(list)
+                schedulePollIfNeeded(list)
             } catch (e: Exception) {
                 println("templates refresh failed: $e")
             } finally {
                 refreshing = false
+            }
+        }
+    }
+
+    private fun schedulePollIfNeeded(templates: List<TemplateOverviewResponseDto>) {
+        pollJob?.cancel()
+        if (templates.none { it.generationStatus == GenerationStatus.GENERATING }) return
+        pollJob = viewModelScope.launch {
+            delay(3000)
+            try {
+                val list = repository.refreshFirstPage(pageSize, search = query, asc = sortOption.asc)
+                page = 1
+                endReached = list.size < pageSize
+                state = TemplateState.Success(list)
+                schedulePollIfNeeded(list)
+            } catch (e: Exception) {
+                // A transient failure (brief connectivity hiccup, etc.) shouldn't permanently kill
+                // the self-healing poll loop - retry with the same list instead of giving up, so
+                // the UI doesn't get stuck showing "Generating..." forever.
+                println("templates poll failed, retrying: $e")
+                schedulePollIfNeeded(templates)
             }
         }
     }

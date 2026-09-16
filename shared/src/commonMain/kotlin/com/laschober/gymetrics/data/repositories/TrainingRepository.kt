@@ -3,6 +3,8 @@ package com.laschober.gymetrics.data.repositories
 import com.laschober.gymetrics.data.local.NextTrainingCache
 import com.laschober.gymetrics.data.local.PendingAction
 import com.laschober.gymetrics.data.network.ConnectivityObserver
+import com.laschober.gymetrics.data.remote.dto.ExerciseDoneRequestDto
+import com.laschober.gymetrics.data.remote.dto.TrainingDoneRequestDto
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
 import com.laschober.gymetrics.data.remote.dto.TrainingRequestDto
 import com.laschober.gymetrics.data.remote.dto.TrainingResponseDto
@@ -180,6 +182,7 @@ class TrainingRepository(
         }
         check(response.status.isSuccess()) { "Couldn't create training (${response.status.value})" }
         parseYearMonth(activeDate)?.let { (year, month) -> invalidateMonthCache(year, month) }
+        store.set(emptyList())
     }
 
     suspend fun deleteTraining(id: String) {
@@ -191,14 +194,18 @@ class TrainingRepository(
         check(response.status.isSuccess()) { "Couldn't delete training (${response.status.value})" }
         invalidateTrainingDetail(id)
         monthCacheStore.set(emptyMap())
+        store.set(emptyList())
     }
 
-    suspend fun completeTraining(id: String) {
+    suspend fun completeTraining(id: String, plan: List<ExerciseDoneRequestDto>) {
         if (!connectivityObserver.isOnline.value) {
-            pendingActionQueue.enqueue(PendingAction.CompleteTraining(newActionId(), id))
+            pendingActionQueue.enqueue(PendingAction.CompleteTraining(newActionId(), id, plan))
             return
         }
-        val response = client.put("training/$id")
+        val response = client.put("training/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(TrainingDoneRequestDto(active = false, plan = plan))
+        }
         check(response.status.isSuccess()) { "Couldn't complete training (${response.status.value})" }
         invalidateTrainingDetail(id)
         store.set(emptyList())

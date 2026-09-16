@@ -7,17 +7,83 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.remote.dto.TemplateExerciseDto
 import com.laschober.gymetrics.data.remote.dto.TemplateRequestDto
+import com.laschober.gymetrics.data.remote.dto.UserProfileDto
 import com.laschober.gymetrics.data.repositories.TemplateRepository
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 
 class TemplateFormScreenViewModel(
     private val repository: TemplateRepository,
+    private val client: HttpClient,
 ) : ViewModel() {
 
     var state: TemplateFormState by mutableStateOf(TemplateFormState.Loading)
         private set
     private var nextLocalId = 0
     private fun newLocalId() = "local-${nextLocalId++}"
+
+    var aiDialogVisible: Boolean by mutableStateOf(false)
+        private set
+    var aiMessage: String by mutableStateOf("")
+        private set
+    var aiSubmitting: Boolean by mutableStateOf(false)
+        private set
+    var aiError: String? by mutableStateOf(null)
+        private set
+    var activeStudio: String? by mutableStateOf(null)
+        private set
+
+    fun openAiDialog() {
+        aiDialogVisible = true
+        aiError = null
+        if (activeStudio == null) {
+            viewModelScope.launch {
+                try {
+                    val response = client.get("user/profile")
+                    if (response.status.isSuccess()) {
+                        activeStudio = response.body<UserProfileDto>().activeStudio
+                    }
+                } catch (e: Exception) {
+                    println("template form: loading profile for AI dialog failed: $e")
+                }
+            }
+        }
+    }
+
+    fun dismissAiDialog() {
+        aiDialogVisible = false
+        aiError = null
+    }
+
+    fun updateAiMessage(value: String) {
+        aiMessage = value
+    }
+
+    fun submitAiGeneration(onStarted: () -> Unit) {
+        if (aiSubmitting) return
+        val studio = activeStudio
+        if (studio.isNullOrBlank()) {
+            aiError = "Choose a studio in Settings first so the AI knows your equipment"
+            return
+        }
+        aiSubmitting = true
+        aiError = null
+        viewModelScope.launch {
+            try {
+                repository.generateTemplateWithAi(studio, aiMessage.trim().ifBlank { null })
+                aiDialogVisible = false
+                onStarted()
+            } catch (e: Exception) {
+                println("template AI generation failed: $e")
+                aiError = e.message ?: "Couldn't start AI generation"
+            } finally {
+                aiSubmitting = false
+            }
+        }
+    }
 
     fun load(id: String?) {
         if (id == null) {

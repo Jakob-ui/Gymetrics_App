@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,11 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.core.util.formatDateTime
-import com.laschober.gymetrics.core.util.parseLocalDate
-import com.laschober.gymetrics.core.util.todayLocalDate
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
 import com.laschober.gymetrics.ui.components.Pill
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.CheckCircle
 import compose.icons.feathericons.Clock
 import compose.icons.feathericons.Play
 import org.koin.compose.viewmodel.koinViewModel
@@ -44,7 +44,7 @@ fun HomeScreen(
     onStartTraining: (trainingId: String, title: String) -> Unit = { _, _ -> },
     onShowMessage: (String) -> Unit = {},
 ) {
-    LaunchedEffect(Unit) { viewModel.loadNextTraining() }
+    LaunchedEffect(Unit) { viewModel.loadHomeTrainings() }
 
     LaunchedEffect(viewModel.transientError) {
         viewModel.transientError?.let {
@@ -74,7 +74,7 @@ fun HomeScreen(
         Spacer(Modifier.height(28.dp))
 
         Text(
-            text = "Next workout",
+            text = "Today",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
@@ -82,22 +82,22 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
 
         Box(Modifier.fillMaxWidth().height(3.dp)) {
-            if (viewModel.reloading && viewModel.nextTraining is NextTrainingState.Success) {
+            if (viewModel.reloading && viewModel.homeTrainings is HomeTrainingsState.Success) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         }
 
         Spacer(Modifier.height(4.dp))
 
-        when (val s = viewModel.nextTraining) {
-            NextTrainingState.Loading -> Box(
+        when (val s = viewModel.homeTrainings) {
+            HomeTrainingsState.Loading -> Box(
                 modifier = Modifier.fillMaxWidth().height(200.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
 
-            is NextTrainingState.Error -> Card(
+            is HomeTrainingsState.Error -> Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
             ) {
@@ -106,15 +106,15 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(s.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { viewModel.loadNextTraining() }) { Text("Try again") }
+                    TextButton(onClick = { viewModel.loadHomeTrainings() }) { Text("Try again") }
                 }
             }
 
-            is NextTrainingState.Success -> {
-                val training = s.training
-                if (training == null) {
+            is HomeTrainingsState.Success -> {
+                val contentAlpha = if (viewModel.reloading) 0.55f else 1f
+                if (s.today == null && s.next == null) {
                     Card(
-                        modifier = Modifier.fillMaxWidth().alpha(if (viewModel.reloading) 0.55f else 1f),
+                        modifier = Modifier.fillMaxWidth().alpha(contentAlpha),
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                     ) {
@@ -133,11 +133,18 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    NextTrainingCard(
-                        training = training,
-                        onStartTraining = { onStartTraining(training.id, training.title) },
-                        modifier = Modifier.alpha(if (viewModel.reloading) 0.55f else 1f),
-                    )
+                    Column(
+                        modifier = Modifier.alpha(contentAlpha),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        s.today?.let { today ->
+                            TodayTrainingCard(
+                                training = today,
+                                onClick = { onStartTraining(today.id, today.title) },
+                            )
+                        }
+                        s.next?.let { next -> NextUpRow(next) }
+                    }
                 }
             }
         }
@@ -145,13 +152,14 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NextTrainingCard(
+private fun TodayTrainingCard(
     training: TrainingOverviewResponseDto,
-    onStartTraining: () -> Unit,
-    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
+    val completed = !training.status
+
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
@@ -161,14 +169,15 @@ private fun NextTrainingCard(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Pill(
-                    text = formatDateTime(training.activeDate),
+                    text = "Today",
                     icon = FeatherIcons.Clock,
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                relativeDayLabel(training.activeDate)?.let { label ->
+                if (completed) {
                     Pill(
-                        text = label,
+                        text = "Completed",
+                        icon = FeatherIcons.CheckCircle,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
@@ -192,11 +201,19 @@ private fun NextTrainingCard(
             }
 
             Button(
-                onClick = onStartTraining,
+                onClick = onClick,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(16.dp),
+                colors = if (completed) {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary,
+                    )
+                } else {
+                    ButtonDefaults.buttonColors()
+                },
             ) {
-                Text("Start training", style = MaterialTheme.typography.titleMedium)
+                Text(if (completed) "Continue training" else "Start training", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(8.dp))
                 Icon(FeatherIcons.Play, contentDescription = null)
             }
@@ -204,11 +221,35 @@ private fun NextTrainingCard(
     }
 }
 
-private fun relativeDayLabel(iso: String): String? {
-    val date = parseLocalDate(iso) ?: return null
-    return when (date.toEpochDays() - todayLocalDate().toEpochDays()) {
-        0L -> "Today"
-        1L -> "Tomorrow"
-        else -> null
+@Composable
+private fun NextUpRow(training: TrainingOverviewResponseDto) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Next workout coming up",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = training.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = formatDateTime(training.activeDate),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

@@ -11,6 +11,8 @@ data class TemplateOverviewResponseDto(
     val description: String = "",
     val status: Boolean = false,
     val icon: String = "",
+    val isAiGenerated: Boolean = false,
+    val generationStatus: GenerationStatus = GenerationStatus.READY,
     @SerialName("created_date") val createdDate: String = "",
     @SerialName("updated_date") val updatedDate: String = "",
 )

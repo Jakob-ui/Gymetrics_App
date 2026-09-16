@@ -29,6 +29,14 @@ class SettingStore(
         return settings.getBooleanOrNull(SETUP)
     }
 
+    fun setAiMode(mode: Boolean) {
+        settings.putBoolean(AIMODE, mode)
+    }
+
+    fun getAiMode() : Boolean? {
+        return settings.getBooleanOrNull(AIMODE)
+    }
+
     fun getThemeMode(): ThemeMode =
         settings.getStringOrNull(THEMEMODEKEY)?.let { saved ->
             runCatching { ThemeMode.valueOf(saved) }.getOrNull()
@@ -39,5 +47,6 @@ class SettingStore(
         const val NAMEKEY = "name"
         const val THEMEMODEKEY = "theme_mode"
         const val SETUP = "setup"
+        const val AIMODE = "ai_mode"
     }
 }

@@ -33,9 +33,6 @@ class SettingScreenViewModel(
         themeModeRepository.setThemeMode(mode)
     }
 
-    // Only needed here to know the current studio and to keep the other profile fields intact
-    // when saving - the backend's PUT /user requires all six fields every time, same as
-    // ProfileScreenViewModel's save().
     var profile: UserProfileDto? by mutableStateOf(null)
         private set
 

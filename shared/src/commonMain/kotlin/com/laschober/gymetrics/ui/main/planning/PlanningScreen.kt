@@ -1,5 +1,6 @@
 package com.laschober.gymetrics.ui.main.planning
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -48,7 +50,6 @@ import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
 import com.laschober.gymetrics.ui.components.PullToRefreshBoxCompat
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Activity
 import compose.icons.feathericons.CheckCircle
 import compose.icons.feathericons.ChevronLeft
 import compose.icons.feathericons.ChevronRight
@@ -217,6 +218,7 @@ private fun WeekPage(
                             date = date,
                             trainings = trainings,
                             isToday = date == viewModel.today,
+                            canSchedule = viewModel.canScheduleTraining(date),
                             onClick = { onDayClick(date, trainings) },
                         )
                     }
@@ -261,62 +263,45 @@ private fun DayRow(
     date: LocalDate,
     trainings: List<TrainingOverviewResponseDto>,
     isToday: Boolean,
+    canSchedule: Boolean,
     onClick: () -> Unit,
 ) {
-    val onAccentColor = if (isToday) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isToday) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            },
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
-                modifier = Modifier.width(48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = weekdayLabel(date.dayOfWeek),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = onAccentColor,
-                )
-                Text(
-                    text = date.day.toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                )
-            }
+            DateBadge(date = date, isToday = isToday)
 
             Spacer(Modifier.width(16.dp))
 
             if (trainings.isEmpty()) {
-                Text(
-                    text = "No training",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = onAccentColor,
-                    modifier = Modifier.align(Alignment.CenterVertically),
-                )
+                if (canSchedule) {
+                    Text(
+                        text = "Plan a training",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                } else {
+                    Text(
+                        text = "No training",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                }
             } else {
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    trainings.forEach { training -> TrainingRow(training, isToday) }
+                    trainings.forEach { training -> TrainingRow(training) }
                 }
             }
         }
@@ -324,16 +309,39 @@ private fun DayRow(
 }
 
 @Composable
-private fun TrainingRow(training: TrainingOverviewResponseDto, isToday: Boolean) {
-    val textColor = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-    val mutedColor = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+private fun DateBadge(date: LocalDate, isToday: Boolean) {
+    val containerColor = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
+    val onColor = if (isToday) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
+    Column(
+        modifier = Modifier
+            .width(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerColor)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = weekdayLabel(date.dayOfWeek),
+            style = MaterialTheme.typography.labelSmall,
+            color = onColor,
+        )
+        Text(
+            text = date.day.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = onColor,
+        )
+    }
+}
+
+@Composable
+private fun TrainingRow(training: TrainingOverviewResponseDto) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = training.title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
-            color = textColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
@@ -342,7 +350,7 @@ private fun TrainingRow(training: TrainingOverviewResponseDto, isToday: Boolean)
             Icon(
                 imageVector = FeatherIcons.CheckCircle,
                 contentDescription = "Completed",
-                tint = mutedColor,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
         }

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -49,6 +49,7 @@ import compose.icons.feathericons.Check
 import compose.icons.feathericons.Menu
 import compose.icons.feathericons.Plus
 import compose.icons.feathericons.Trash2
+import compose.icons.feathericons.Zap
 import org.koin.compose.viewmodel.koinViewModel
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -102,10 +103,83 @@ fun TemplateFormScreen(
                     onAddExercise = viewModel::addExercise,
                     onSave = { viewModel.save { onShowMessage("Template saved"); onSaved() } },
                     onDelete = { viewModel.delete { onShowMessage("Template deleted"); onSaved() } },
+                    onOpenAiDialog = viewModel::openAiDialog,
                 )
+
+                if (viewModel.aiDialogVisible) {
+                    AiGenerateDialog(
+                        message = viewModel.aiMessage,
+                        onMessageChange = viewModel::updateAiMessage,
+                        submitting = viewModel.aiSubmitting,
+                        error = viewModel.aiError,
+                        hasStudio = !viewModel.activeStudio.isNullOrBlank(),
+                        onDismiss = viewModel::dismissAiDialog,
+                        onSubmit = {
+                            viewModel.submitAiGeneration {
+                                onShowMessage("Generating your template with AI…")
+                                onSaved()
+                            }
+                        },
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun AiGenerateDialog(
+    message: String,
+    onMessageChange: (String) -> Unit,
+    submitting: Boolean,
+    error: String?,
+    hasStudio: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() },
+        title = { Text("Create with AI") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "AI can generate a template for you using the context of your recent " +
+                        "trainings and your profile. If you've picked a studio, it can also " +
+                        "take the equipment available there into account.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = onMessageChange,
+                    label = { Text("What do you want out of this template?") },
+                    placeholder = { Text("e.g. focus on leg strength") },
+                    enabled = !submitting,
+                    minLines = 2,
+                    shape = fieldShape,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!hasStudio) {
+                    Text(
+                        "You need to pick a studio in Settings first, so the AI knows what " +
+                            "equipment to plan around.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                error?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSubmit, enabled = !submitting && hasStudio) {
+                Text(if (submitting) "Starting…" else "Generate")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !submitting) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -122,6 +196,7 @@ private fun BoxScope.TemplateForm(
     onAddExercise: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onOpenAiDialog: () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
@@ -141,6 +216,19 @@ private fun BoxScope.TemplateForm(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Details", style = MaterialTheme.typography.titleMedium)
+
+                    if (state.isNew) {
+                        OutlinedButton(onClick = onOpenAiDialog, shape = fieldShape) {
+                            Text("Create with AI")
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = state.title,
                     onValueChange = onTitleChange,
@@ -166,15 +254,23 @@ private fun BoxScope.TemplateForm(
                     ),
                 )
                 Text("Exercises", style = MaterialTheme.typography.titleMedium)
+                if (state.exercises.isEmpty()) {
+                    Text(
+                        "No exercises yet - add your first one below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
 
-        items(state.exercises, key = { it.localId }) { exercise ->
+        itemsIndexed(state.exercises, key = { _, item -> item.localId }) { index, exercise ->
             ReorderableItem(reorderableState, key = exercise.localId) { isDragging ->
                 val elevation by animateDpAsState(if (isDragging) 6.dp else 0.dp)
                 Surface(shadowElevation = elevation, shape = cardShape) {
                     ExerciseFormCard(
                         scope = this@ReorderableItem,
+                        index = index,
                         exercise = exercise,
                         onTitleChange = { onExerciseTitleChange(exercise.localId, it) },
                         onRepsChange = { onExerciseRepsChange(exercise.localId, it) },
@@ -244,6 +340,7 @@ private fun BoxScope.TemplateForm(
 @Composable
 private fun ExerciseFormCard(
     scope: ReorderableCollectionItemScope,
+    index: Int,
     exercise: ExerciseFormItem,
     onTitleChange: (String) -> Unit,
     onRepsChange: (String) -> Unit,
@@ -254,6 +351,11 @@ private fun ExerciseFormCard(
     val haptics = LocalHapticFeedback.current
     Card(shape = cardShape, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Exercise ${index + 1}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = exercise.title,
@@ -287,7 +389,8 @@ private fun ExerciseFormCard(
                 OutlinedTextField(
                     value = exercise.weight,
                     onValueChange = onWeightChange,
-                    label = { Text("Weight (kg)") },
+                    label = { Text("Weight") },
+                    suffix = { Text("kg") },
                     singleLine = true,
                     shape = fieldShape,
                     modifier = Modifier.weight(1f),

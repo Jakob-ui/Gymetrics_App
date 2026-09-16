@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.data.local.ExerciseEntry
 import com.laschober.gymetrics.data.local.TrainingDraft
+import com.laschober.gymetrics.data.remote.dto.ExerciseDoneRequestDto
 import com.laschober.gymetrics.data.remote.dto.TrainingExerciseDto
 import com.laschober.gymetrics.data.remote.dto.TrainingResponseDto
 import com.laschober.gymetrics.ui.components.Pill
@@ -88,8 +89,8 @@ fun TrainingExecutionScreen(
             restoredDraft = viewModel.restoredDraft,
             completing = viewModel.completing,
             onEntriesChanged = { entries -> viewModel.saveDraft(TrainingDraft(s.training.id, entries)) },
-            onFinish = {
-                viewModel.completeTraining {
+            onFinish = { plan ->
+                viewModel.completeTraining(plan) {
                     onShowMessage("Training completed")
                     onCompleted()
                 }
@@ -104,18 +105,23 @@ private fun TrainingExecutionForm(
     restoredDraft: TrainingDraft?,
     completing: Boolean,
     onEntriesChanged: (List<ExerciseEntry>) -> Unit,
-    onFinish: () -> Unit,
+    onFinish: (List<ExerciseDoneRequestDto>) -> Unit,
 ) {
+    // A locally saved draft (in-progress, not yet submitted) takes priority per field over
+    // whatever the backend already has stored, since it reflects the most recent typing - but if
+    // there's no draft value for a field, fall back to the backend's saved value instead of
+    // leaving it blank, so previously entered/saved numbers aren't hidden.
     val entries = remember(training.id) {
         training.plan.mapIndexed { index, exercise ->
             val setCount = exercise.sets.coerceAtLeast(1)
             val saved = restoredDraft?.exercises?.getOrNull(index)
-            mutableStateOf(
-                ExerciseEntry(
-                    weightDone = saved?.weightDone.orEmpty(),
-                    repsDone = List(setCount) { i -> saved?.repsDone?.getOrNull(i).orEmpty() },
-                ),
-            )
+            val weightDone = saved?.weightDone?.takeIf { it.isNotBlank() }
+                ?: exercise.weightDone?.toString().orEmpty()
+            val repsDone = List(setCount) { i ->
+                saved?.repsDone?.getOrNull(i)?.takeIf { it.isNotBlank() }
+                    ?: (if (i == 0) exercise.repsDone?.toString().orEmpty() else "")
+            }
+            mutableStateOf(ExerciseEntry(weightDone = weightDone, repsDone = repsDone))
         }
     }
 
@@ -146,8 +152,9 @@ private fun TrainingExecutionForm(
 
             items(training.plan.size) { index ->
                 val entryState = entries[index]
+                val exercise = training.plan[index]
                 ExerciseEntryCard(
-                    exercise = training.plan[index],
+                    exercise = exercise,
                     entry = entryState.value,
                     onWeightDoneChange = {
                         entryState.value = entryState.value.copy(weightDone = it)
@@ -159,12 +166,31 @@ private fun TrainingExecutionForm(
                         )
                         persist()
                     },
+                    onFillTargets = {
+                        entryState.value = ExerciseEntry(
+                            weightDone = exercise.weight?.toString().orEmpty(),
+                            repsDone = List(entryState.value.repsDone.size) { exercise.reps.toString() },
+                        )
+                        persist()
+                    },
                 )
             }
         }
 
         ExtendedFloatingActionButton(
-            onClick = { if (!completing) onFinish() },
+            onClick = {
+                if (!completing) {
+                    val plan = training.plan.mapIndexed { index, exercise ->
+                        val entry = entries[index].value
+                        ExerciseDoneRequestDto(
+                            title = exercise.title,
+                            repsDone = entry.repsDone.firstOrNull()?.toIntOrNull(),
+                            weightDone = entry.weightDone.toDoubleOrNull(),
+                        )
+                    }
+                    onFinish(plan)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp).padding(bottom = 160.dp),
@@ -182,6 +208,7 @@ private fun ExerciseEntryCard(
     entry: ExerciseEntry,
     onWeightDoneChange: (String) -> Unit,
     onRepsDoneChange: (setIndex: Int, value: String) -> Unit,
+    onFillTargets: () -> Unit,
 ) {
     Card(
         shape = cardShape,
@@ -222,6 +249,11 @@ private fun ExerciseEntryCard(
                     keyboardType = KeyboardType.Number,
                     imeAction = if (setIndex == entry.repsDone.lastIndex) ImeAction.Done else ImeAction.Next,
                 )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onFillTargets, modifier = Modifier.fillMaxWidth()) {
+                Text("Fill with target values")
             }
         }
     }

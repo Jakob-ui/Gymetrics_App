@@ -57,7 +57,6 @@ import org.jetbrains.compose.resources.vectorResource
 import org.koin.compose.viewmodel.koinViewModel
 
 private enum class ServerMode { Cloud, Custom }
-@Preview
 @Composable
 fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(), onContinue: () -> Unit = {}) {
     val saved = remember { viewModel.getSavedUrl() }

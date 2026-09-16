@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class ServerConnectionViewModel(
     private val client: HttpClient,
-    private val urlStore: SettingStore,
+    private val settingStore: SettingStore,
 ) : ViewModel() {
 
     var state: ServerConnectionState by mutableStateOf(ServerConnectionState.Idle)
@@ -55,23 +55,22 @@ class ServerConnectionViewModel(
                 state = ServerConnectionState.Loading
                 viewModelScope.launch {
                     state = try {
-                        val response = client.get(url)
+                        val response = client.get("$url/status")
                         val status = response.body<ServerStatusDto>()
                         if (status.status == "ok" && "Gymetrics backend here" in status.message) {
+                            settingStore.setAiMode(status.aiMode)
                             ServerConnectionState.Success(url, status.message)
                         } else {
                             ServerConnectionState.Error("Could not reach the server")
                         }
                     } catch (e: Exception) {
-                        ServerConnectionState.Error("An error occured")
+                        ServerConnectionState.Error("An error occurred")
                     }
                 }
             }
         }
     }
 
-    // Called on every edit of the URL field - a previous check result no longer applies to the
-    // new text, so drop it back to Idle (which also disables Continue again).
     fun resetCheck() {
         when (state) {
             is ServerConnectionState.Success, is ServerConnectionState.Error ->
@@ -80,12 +79,12 @@ class ServerConnectionViewModel(
         }
     }
 
-    fun getSavedUrl(): String = urlStore.getUrl() ?: ""
+    fun getSavedUrl(): String = settingStore.getUrl() ?: ""
 
     fun storeServerUrl() {
         val current = state
         if (current is ServerConnectionState.Success) {
-            urlStore.saveUrl(current.url)
+            settingStore.saveUrl(current.url)
         }
     }
 }

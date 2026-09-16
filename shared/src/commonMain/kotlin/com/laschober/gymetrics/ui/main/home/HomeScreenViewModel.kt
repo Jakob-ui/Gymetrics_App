@@ -5,15 +5,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.laschober.gymetrics.core.util.parseLocalDate
+import com.laschober.gymetrics.core.util.todayLocalDate
 import com.laschober.gymetrics.data.remote.dto.TrainingOverviewResponseDto
 import com.laschober.gymetrics.data.repositories.HomeRepository
 import com.laschober.gymetrics.data.repositories.TrainingRepository
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 
-sealed interface NextTrainingState {
-    data object Loading : NextTrainingState
-    data class Success(val training: TrainingOverviewResponseDto?) : NextTrainingState
-    data class Error(val message: String) : NextTrainingState
+sealed interface HomeTrainingsState {
+    data object Loading : HomeTrainingsState
+    data class Success(val today: TrainingOverviewResponseDto?, val next: TrainingOverviewResponseDto?) : HomeTrainingsState
+    data class Error(val message: String) : HomeTrainingsState
 }
 
 class HomeScreenViewModel(
@@ -24,7 +29,7 @@ class HomeScreenViewModel(
     var greetingName: String by mutableStateOf("")
         private set
 
-    var nextTraining: NextTrainingState by mutableStateOf(NextTrainingState.Loading)
+    var homeTrainings: HomeTrainingsState by mutableStateOf(HomeTrainingsState.Loading)
         private set
     var reloading: Boolean by mutableStateOf(false)
         private set
@@ -35,7 +40,7 @@ class HomeScreenViewModel(
     init {
         loadGreetingName()
     }
-    
+
     private fun loadGreetingName() {
         viewModelScope.launch {
             try {
@@ -46,30 +51,41 @@ class HomeScreenViewModel(
         }
     }
 
-    fun loadNextTraining() {
+    fun loadHomeTrainings() {
+        val hadContent = homeTrainings is HomeTrainingsState.Success
+        if (!hadContent) homeTrainings = HomeTrainingsState.Loading
         reloading = true
         viewModelScope.launch {
-            if (nextTraining !is NextTrainingState.Success) {
-                try {
-                    trainingRepository.getCachedNextTraining()?.let {
-                        nextTraining = NextTrainingState.Success(it.training)
-                    }
-                } catch (e: Exception) {
-                    println("home: reading cached next training failed: $e")
-                }
-            }
-
-            val hadContent = nextTraining is NextTrainingState.Success
             try {
-                val result = trainingRepository.getNextTraining()
-                nextTraining = NextTrainingState.Success(result)
+                val today = todayLocalDate()
+                val monthTrainings = trainingRepository.getTrainingsForMonth(today.year, today.month.ordinal + 1)
+                val dated = monthTrainings.mapNotNull { t -> parseLocalDate(t.activeDate)?.let { it to t } }
+
+                val todaysTraining = dated.find { (date, _) -> date == today }?.second
+
+                val upcoming = dated
+                    .filter { (date, _) -> date > today }
+                    .sortedBy { it.first }
+                    .firstOrNull()?.second
+                    ?: fetchFirstFromNextMonth(today)
+
+                homeTrainings = HomeTrainingsState.Success(todaysTraining, upcoming)
             } catch (e: Exception) {
-                println("home: loading next training failed: $e")
-                if (hadContent) transientError = "Couldn't refresh your next training"
-                else nextTraining = NextTrainingState.Error("Couldn't load your next training")
+                println("home: loading trainings failed: $e")
+                if (hadContent) transientError = "Couldn't refresh your trainings"
+                else homeTrainings = HomeTrainingsState.Error("Couldn't load your trainings")
             } finally {
                 reloading = false
             }
         }
+    }
+
+    private suspend fun fetchFirstFromNextMonth(today: LocalDate): TrainingOverviewResponseDto? {
+        val nextMonth = LocalDate(today.year, today.month, 1).plus(1, DateTimeUnit.MONTH)
+        val nextMonthTrainings = trainingRepository.getTrainingsForMonth(nextMonth.year, nextMonth.month.ordinal + 1)
+        return nextMonthTrainings
+            .mapNotNull { t -> parseLocalDate(t.activeDate)?.let { it to t } }
+            .sortedBy { it.first }
+            .firstOrNull()?.second
     }
 }

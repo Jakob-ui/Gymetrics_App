@@ -45,9 +45,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.laschober.gymetrics.data.remote.dto.GenerationStatus
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.ui.components.PullToRefreshBoxCompat
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.AlertTriangle
 import compose.icons.feathericons.ChevronRight
 import compose.icons.feathericons.Plus
 import compose.icons.feathericons.Search
@@ -63,8 +65,6 @@ fun TemplateScreen(
     onShowMessage: (String) -> Unit = {},
     bottomPadding: Dp = 130.dp,
 ) {
-    // A failed background reload (list already on screen) surfaces as a one-off snackbar,
-    // not a full error screen.
     LaunchedEffect(viewModel.transientError) {
         viewModel.transientError?.let {
             onShowMessage(it)
@@ -104,7 +104,6 @@ fun TemplateScreen(
             }
         }
 
-        // Fixed-height slot so the list doesn't jump when the bar appears/disappears.
         Box(Modifier.fillMaxWidth().height(3.dp)) {
             if (viewModel.reloading && viewModel.state is TemplateState.Success) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -160,11 +159,6 @@ fun TemplateScreen(
                         }
                     }
 
-                    // Keyed on the list size too, not just shouldLoadMore: after a page finishes
-                    // loading, the user is often still within the "near the bottom" threshold for
-                    // the now-longer list, so the boolean itself never flips (true -> true) and a
-                    // key of shouldLoadMore alone would never re-fire - silently skipping every
-                    // page after the second.
                     LaunchedEffect(shouldLoadMore, s.templates.size) {
                         if (shouldLoadMore) viewModel.loadNextPage()
                     }
@@ -205,10 +199,14 @@ fun TemplateScreen(
 }
 
 @Composable
-private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> Unit) {
+private fun TemplateCard(template: TemplateOverviewResponseDto, onClick: () -> Unit) {
+    val generating = template.generationStatus == GenerationStatus.GENERATING
+    val failed = template.generationStatus == GenerationStatus.FAILED
+
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        enabled = !generating,
+        modifier = Modifier.fillMaxWidth().alpha(if (generating) 0.6f else 1f),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
@@ -220,15 +218,30 @@ private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> 
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(
+                        if (failed) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.primaryContainer,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = template.title.take(1).uppercase().ifBlank { "?" },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                when {
+                    generating -> CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    failed -> Icon(
+                        imageVector = FeatherIcons.AlertTriangle,
+                        contentDescription = "Generation failed",
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    else -> Text(
+                        text = template.title.take(1).uppercase().ifBlank { "?" },
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
 
             Spacer(Modifier.width(16.dp))
@@ -238,15 +251,27 @@ private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> 
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = template.title,
+                    text = when {
+                        generating -> "Generating with AI…"
+                        failed -> "AI generation failed"
+                        else -> template.title
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (template.description.isNotBlank()) {
+                if (!generating && !failed && template.description.isNotBlank()) {
                     Text(
                         text = template.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else if (failed) {
+                    Text(
+                        text = "Tap to remove",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -257,19 +282,21 @@ private fun TemplateCard(template: TemplateOverviewResponseDto,  onClick: () -> 
 
             Spacer(Modifier.width(8.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = FeatherIcons.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
+            if (!generating) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = FeatherIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
     }

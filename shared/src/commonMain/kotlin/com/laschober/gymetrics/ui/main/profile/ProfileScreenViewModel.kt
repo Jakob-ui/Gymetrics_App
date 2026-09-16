@@ -20,7 +20,6 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 
-// Editable copy of the profile fields the backend accepts in PUT /user.
 data class ProfileForm(
     val name: String = "",
     val gender: String = "",
@@ -38,6 +37,7 @@ class ProfileScreenViewModel(
 ) : ViewModel() {
 
     val serverUrl: String = settingStore.getUrl().orEmpty()
+    val aiMode: Boolean = settingStore.getAiMode() == true
 
     var state: ProfileState by mutableStateOf(ProfileState.Loading)
         private set
@@ -63,9 +63,6 @@ class ProfileScreenViewModel(
                 val response = client.get("user/profile")
                 if (response.status.isSuccess()) {
                     val profile = response.body<UserProfileDto>()
-                    // This screen always fetches fresh (it's where you'd notice a stale name),
-                    // so it's the natural place to keep Home's cached copy (HomeRepository) up
-                    // to date too - covers both the initial load and the reload after save().
                     homeRepository.cacheProfile(profile)
                     ProfileState.Success(profile)
                 } else {

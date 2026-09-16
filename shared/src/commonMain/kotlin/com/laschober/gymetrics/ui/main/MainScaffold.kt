@@ -110,7 +110,15 @@ fun MainScaffold(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val showMessage: (String) -> Unit = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+    // Dismiss whatever's currently showing before queuing the next one - otherwise spamming a
+    // button that shows the same (or any) message just piles up a long queue of banners that all
+    // have to play out one by one instead of the latest one simply replacing the last.
+    val showMessage: (String) -> Unit = { msg ->
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     val name = settingStore.getName().orEmpty()
 
@@ -400,10 +408,6 @@ private fun InfoBadges(isOnline: Boolean, pendingCount: Int, expanded: Boolean, 
     }
 }
 
-// Icon-only pill that reveals a trailing label via AnimatedVisibility's own
-// expandHorizontally/shrinkHorizontally - unlike animateContentSize, this doesn't clip its
-// content to a stale intermediate size mid-animation, which is what caused the badges to
-// visually overflow their row on the right when expanding.
 @Composable
 private fun ExpandableBadge(
     containerColor: Color,

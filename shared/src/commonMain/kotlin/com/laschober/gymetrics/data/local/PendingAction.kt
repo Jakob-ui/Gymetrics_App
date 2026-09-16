@@ -1,5 +1,6 @@
 package com.laschober.gymetrics.data.local
 
+import com.laschober.gymetrics.data.remote.dto.ExerciseDoneRequestDto
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,5 +24,6 @@ sealed interface PendingAction {
     data class CompleteTraining(
         override val id: String,
         val trainingId: String,
+        val plan: List<ExerciseDoneRequestDto>,
     ) : PendingAction
 }

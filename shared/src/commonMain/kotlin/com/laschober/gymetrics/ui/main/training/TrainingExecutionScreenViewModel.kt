@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.local.TrainingDraft
+import com.laschober.gymetrics.data.remote.dto.ExerciseDoneRequestDto
 import com.laschober.gymetrics.data.repositories.TrainingDraftRepository
 import com.laschober.gymetrics.data.repositories.TrainingRepository
 import kotlinx.coroutines.launch
@@ -53,17 +54,18 @@ class TrainingExecutionScreenViewModel(
         }
     }
 
-    // Sets active=false. If offline, TrainingRepository queues it and returns normally - so
-    // onCompleted() still runs (and the draft still gets cleared) even before it's actually
-    // synced, matching how "Add training"/"Delete training" already behave in Planning.
-    fun completeTraining(onCompleted: () -> Unit) {
+    // Sets active=false and submits the entered weight/reps per exercise. If offline,
+    // TrainingRepository queues it (plan included) and returns normally - so onCompleted() still
+    // runs (and the draft still gets cleared) even before it's actually synced, matching how "Add
+    // training"/"Delete training" already behave in Planning.
+    fun completeTraining(plan: List<ExerciseDoneRequestDto>, onCompleted: () -> Unit) {
         if (completing) return
         val trainingId = (state as? TrainingExecutionState.Success)?.training?.id ?: return
         completing = true
         completeError = null
         viewModelScope.launch {
             try {
-                repository.completeTraining(trainingId)
+                repository.completeTraining(trainingId, plan)
                 draftRepository.clearDraft(trainingId)
                 onCompleted()
             } catch (e: Exception) {

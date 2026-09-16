@@ -29,14 +29,12 @@ fun buildHttpClient(settingStore: SettingStore, tokenStore: TokenStore) : HttpCl
         }
     install(Auth) {
         bearer {
-            // Try request if tokens are here
             loadTokens {
                 val access = tokenStore.accessToken()
                 val refresh = tokenStore.refreshToken()
                 if (access != null && refresh != null) BearerTokens(access, refresh) else null
             }
 
-            // try refresh
             refreshTokens {
                 val refresh = tokenStore.refreshToken() ?: return@refreshTokens null
                 val response = client.post("auth/refresh") {

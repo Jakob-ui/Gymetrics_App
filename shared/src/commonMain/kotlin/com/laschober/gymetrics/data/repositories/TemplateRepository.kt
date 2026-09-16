@@ -1,6 +1,7 @@
 package com.laschober.gymetrics.data.repositories
 
 import com.laschober.gymetrics.data.network.ConnectivityObserver
+import com.laschober.gymetrics.data.remote.dto.GenerateTemplateRequestDto
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.data.remote.dto.TemplateRequestDto
 import com.laschober.gymetrics.data.remote.dto.TemplateResponseDto
@@ -26,9 +27,6 @@ enum class TemplateSortBy(val apiValue: String) {
     UPDATED_AT("updatedAt"),
 }
 
-// The backend answers 404 "No Templates found" for an empty result set instead of 200 + [] - this
-// normalizes that (and any other empty-collection 404) to an empty list rather than an error, so
-// e.g. deleting your last template doesn't leave a stale list stuck on screen forever.
 private suspend fun HttpResponse.toTemplateList(): List<TemplateOverviewResponseDto> = when {
     status == HttpStatusCode.NotFound -> emptyList()
     status.isSuccess() -> body()
@@ -167,6 +165,19 @@ class TemplateRepository(
             setBody(request)
         }
         check(response.status.isSuccess()) { "Couldn't create template (${response.status.value})" }
+        store.set(emptyList())
+    }
+
+    suspend fun generateTemplateWithAi(studio: String, message: String?): TemplateResponseDto {
+        check(connectivityObserver.isOnline.value) { "Offline - can't generate a template with AI" }
+        val response = client.post("templates/generate") {
+            contentType(ContentType.Application.Json)
+            setBody(GenerateTemplateRequestDto(studio = studio, message = message))
+        }
+        check(response.status.isSuccess()) { "Couldn't start AI generation (${response.status.value})" }
+        val placeholder = response.body<TemplateResponseDto>()
+        store.set(emptyList())
+        return placeholder
     }
 
     suspend fun updateTemplate(id: String, request: TemplateRequestDto) {
@@ -177,6 +188,7 @@ class TemplateRepository(
         }
         check(response.status.isSuccess()) { "Couldn't update template (${response.status.value})" }
         invalidateTemplateDetail(id)
+        store.set(emptyList())
     }
 
     suspend fun deleteTemplate(id: String) {
@@ -184,5 +196,6 @@ class TemplateRepository(
         val response = client.delete("templates/$id")
         check(response.status.isSuccess()) { "Couldn't delete template (${response.status.value})" }
         invalidateTemplateDetail(id)
+        store.set(emptyList())
     }
 }

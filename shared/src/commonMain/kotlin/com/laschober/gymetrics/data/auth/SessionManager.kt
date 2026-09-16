@@ -7,6 +7,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.auth.authProvider
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 
 class SessionManager(
@@ -30,7 +33,15 @@ class SessionManager(
         return try {
             val response = client.get("auth/validate")
             if (response.status.isSuccess()) SessionState.Authenticated
-            else SessionState.NeedsLogin
+            else {
+                val refresh = tokenStore.refreshToken()
+                val response = client.post("auth/refresh") {
+                    header(HttpHeaders.Authorization, "Bearer $refresh")
+                }
+                if (response.status.isSuccess()){
+                    SessionState.Authenticated
+                } else SessionState.NeedsLogin
+            }
         } catch (e: Exception) {
             println("session check failed: $e")
             SessionState.NeedsLogin
@@ -38,6 +49,7 @@ class SessionManager(
     }
 
     fun logout() {
+        settingStore.setAiMode(false)
         settingStore.toggleSetup(false)
         tokenStore.clear()
         client.authProvider<BearerAuthProvider>()?.clearToken()
