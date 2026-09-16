@@ -64,7 +64,6 @@ class PlanningScreenViewModel(
                 .groupBy({ it.first }, { it.second })
             PlanningState.Success(byDate)
         } catch (e: Exception) {
-            println("planning loadWeek($offset) failed: $e")
             PlanningState.Error("Couldn't load trainings")
         }
     }
@@ -86,7 +85,6 @@ class PlanningScreenViewModel(
             try {
                 templates = templateRepository.firstPage(50)
             } catch (e: Exception) {
-                println("planning: loading templates failed: $e")
                 dialogError = "Couldn't load templates"
             } finally {
                 loadingTemplates = false
@@ -104,7 +102,6 @@ class PlanningScreenViewModel(
                 refreshTrigger++
                 onCreated()
             } catch (e: Exception) {
-                println("planning: create training failed: $e")
                 dialogError = "Couldn't create training"
             } finally {
                 creatingTraining = false
@@ -122,7 +119,6 @@ class PlanningScreenViewModel(
                 refreshTrigger++
                 onDeleted()
             } catch (e: Exception) {
-                println("planning: delete training failed: $e")
                 dialogError = "Couldn't delete training"
             } finally {
                 deletingTraining = false

@@ -84,15 +84,13 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TemplateState.Success(list)
+                repository.watchIfGenerating(list)
                 schedulePollIfNeeded(list)
-                // Fire-and-forget: warms the detail cache for these ids in the background so
-                // opening one is instant later. Doesn't block the list from showing.
                 viewModelScope.launch { repository.prefetchTemplateDetails(list.map { it.id }) }
             } catch (e: NoCachedDataException) {
                 if (hadContent) transientError = "You're offline - showing older data"
                 else state = TemplateState.Error("No data available - check your connection")
             } catch (e: Exception) {
-                println("templates load failed: $e")
                 if (hadContent) transientError = "Couldn't update the list"
                 else state = TemplateState.Error("Couldn't load templates")
             } finally {
@@ -114,10 +112,9 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TemplateState.Success(list)
+                repository.watchIfGenerating(list)
                 schedulePollIfNeeded(list)
-            } catch (e: Exception) {
-                println("templates refresh failed: $e")
-            } finally {
+            } catch (e: Exception) {} finally {
                 refreshing = false
             }
         }
@@ -135,10 +132,6 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 state = TemplateState.Success(list)
                 schedulePollIfNeeded(list)
             } catch (e: Exception) {
-                // A transient failure (brief connectivity hiccup, etc.) shouldn't permanently kill
-                // the self-healing poll loop - retry with the same list instead of giving up, so
-                // the UI doesn't get stuck showing "Generating..." forever.
-                println("templates poll failed, retrying: $e")
                 schedulePollIfNeeded(templates)
             }
         }
@@ -159,9 +152,7 @@ class TemplateScreenViewModel(private val repository: TemplateRepository) : View
                 page += 1
                 if (next.size < pageSize) endReached = true
                 state = TemplateState.Success(current.templates + next)
-            } catch (e: Exception) {
-                println("templates loadNextPage failed: $e")
-            } finally {
+            } catch (e: Exception) {} finally {
                 loadingMore = false
             }
         }

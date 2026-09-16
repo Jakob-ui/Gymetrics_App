@@ -46,9 +46,7 @@ class TemplateFormScreenViewModel(
                     if (response.status.isSuccess()) {
                         activeStudio = response.body<UserProfileDto>().activeStudio
                     }
-                } catch (e: Exception) {
-                    println("template form: loading profile for AI dialog failed: $e")
-                }
+                } catch (e: Exception) {}
             }
         }
     }
@@ -77,7 +75,6 @@ class TemplateFormScreenViewModel(
                 aiDialogVisible = false
                 onStarted()
             } catch (e: Exception) {
-                println("template AI generation failed: $e")
                 aiError = e.message ?: "Couldn't start AI generation"
             } finally {
                 aiSubmitting = false
@@ -117,7 +114,6 @@ class TemplateFormScreenViewModel(
                     },
                 )
             } catch (e: Exception) {
-                println("template form load failed: $e")
                 TemplateFormState.LoadError("Couldn't load template")
             }
         }
@@ -164,7 +160,6 @@ class TemplateFormScreenViewModel(
         editing.copy(exercises = editing.exercises.map { if (it.localId == localId) it.copy(weight = value) else it })
     }
 
-    // Called from the reorderable list's onMove(from, to).
     fun moveExercise(from: Int, to: Int) = update { editing ->
         editing.copy(exercises = editing.exercises.toMutableList().apply { add(to, removeAt(from)) })
     }
@@ -173,7 +168,6 @@ class TemplateFormScreenViewModel(
         val current = state
         if (current !is TemplateFormState.Editing) return
         if (current.title.isBlank()) {
-            // Previously a silent no-op - clicking Save with an empty title did nothing at all.
             update { it.copy(error = "Please enter a title") }
             return
         }
@@ -201,10 +195,6 @@ class TemplateFormScreenViewModel(
                 }
                 onSaved()
             } catch (e: Exception) {
-                println("template save failed: $e")
-                // The repository's own exception messages are already specific (e.g. "Offline -
-                // can't create a template", "Couldn't create template (400)") - showing them
-                // beats a generic message that hides what actually went wrong.
                 update { it.copy(saving = false, error = e.message ?: "Couldn't save template") }
             }
         }
@@ -219,7 +209,6 @@ class TemplateFormScreenViewModel(
                 repository.deleteTemplate(id)
                 onDeleted()
             } catch (e: Exception) {
-                println("template delete failed: $e")
                 update { it.copy(saving = false, error = e.message ?: "Couldn't delete template") }
             }
         }

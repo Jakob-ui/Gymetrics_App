@@ -8,8 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.laschober.gymetrics.data.repositories.NoCachedDataException
 import com.laschober.gymetrics.data.repositories.TrainingRepository
 import kotlinx.coroutines.launch
-// Sorted by activeDate (fixed in TrainingRepository); only direction differs.
-// NEWEST (asc = false) is the cached default view. OLDEST is always network-only.
 enum class TrainingSortOption(val label: String, val asc: Boolean) {
     NEWEST("Newest first", asc = false),
     OLDEST("Oldest first", asc = true),
@@ -67,14 +65,11 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TrainingState.Success(list)
-                // Fire-and-forget: warms the detail cache for these ids in the background so
-                // opening one is instant later. Doesn't block the list from showing.
                 viewModelScope.launch { repository.prefetchTrainingDetails(list.map { it.id }) }
             } catch (e: NoCachedDataException) {
                 if (hadContent) transientError = "You're offline - showing older data"
                 else state = TrainingState.Error("No data available - check your connection")
             } catch (e: Exception) {
-                println("trainings load failed: $e")
                 if (hadContent) transientError = "Couldn't update the list"
                 else state = TrainingState.Error("Couldn't load trainings")
             } finally {
@@ -92,9 +87,7 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
                 page = 1
                 endReached = list.size < pageSize
                 state = TrainingState.Success(list)
-            } catch (e: Exception) {
-                println("trainings refresh failed: $e")
-            } finally {
+            } catch (e: Exception) {} finally {
                 refreshing = false
             }
         }
@@ -110,9 +103,7 @@ class TrainingScreenViewModel(private val repository: TrainingRepository) : View
                 page += 1
                 if (next.size < pageSize) endReached = true
                 state = TrainingState.Success(current.trainings + next)
-            } catch (e: Exception) {
-                println("trainings loadNextPage failed: $e")
-            } finally {
+            } catch (e: Exception) {} finally {
                 loadingMore = false
             }
         }

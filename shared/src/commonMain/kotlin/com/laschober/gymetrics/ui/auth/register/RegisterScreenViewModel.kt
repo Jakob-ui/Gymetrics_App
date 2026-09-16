@@ -38,7 +38,6 @@ class RegisterScreenViewModel(
                     contentType(ContentType.Application.Json)
                     setBody(RegisterRequestDto(name, email, password))
                 }
-                println("register status = ${response.status}")
 
                 when {
                     response.status.isSuccess() -> {
@@ -52,7 +51,6 @@ class RegisterScreenViewModel(
                         RegisterState.Error("Registration failed (${response.status.value})")
                 }
             } catch (e: Exception) {
-                println("Error $e")
                 RegisterState.Error("Register failed")
             }
         }

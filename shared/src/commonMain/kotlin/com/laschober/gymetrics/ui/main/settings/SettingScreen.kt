@@ -4,13 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -57,16 +54,14 @@ fun SettingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .safeContentPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
                     Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                 }
-                Spacer(Modifier.width(4.dp))
                 Text("Settings", style = MaterialTheme.typography.titleMedium)
             }
 
@@ -88,7 +83,7 @@ fun SettingScreen(
                         val options = listOf(
                             ThemeMode.LIGHT to "Light",
                             ThemeMode.DARK to "Dark",
-                            ThemeMode.DEVICE to "Device colors",
+                            ThemeMode.DEVICE to "Device",
                         )
                         options.forEachIndexed { index, (mode, label) ->
                             SegmentedButton(

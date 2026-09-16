@@ -145,11 +145,6 @@ fun TrainingScreen(
                             }
                         }
 
-                        // Keyed on the list size too, not just shouldLoadMore: after a page finishes
-                        // loading, the user is often still within the "near the bottom" threshold for
-                        // the now-longer list, so the boolean itself never flips (true -> true) and a
-                        // key of shouldLoadMore alone would never re-fire - silently skipping every
-                        // page after the second.
                         LaunchedEffect(shouldLoadMore, s.trainings.size) {
                             if (shouldLoadMore) viewModel.loadNextPage()
                         }

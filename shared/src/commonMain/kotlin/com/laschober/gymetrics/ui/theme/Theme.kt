@@ -90,7 +90,6 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerHighest = surfaceContainerHighestLight,
 )
 
-// Colors Material's ColorScheme has no slot for. Reached via MaterialTheme.extendedColors.
 data class ExtendedColors(
     val success: Color,
     val onSuccess: Color,
@@ -117,6 +116,8 @@ fun GymetricsTheme(
 
     val colorScheme = dynamicScheme ?: if (useDarkTheme) DarkColorScheme else LightColorScheme
     val extendedColors = if (useDarkTheme) DarkExtendedColors else LightExtendedColors
+
+    SetStatusBarAppearance(isDarkTheme = useDarkTheme)
 
     MaterialTheme(colorScheme = colorScheme) {
         CompositionLocalProvider(LocalExtendedColors provides extendedColors) {

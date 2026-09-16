@@ -38,7 +38,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.ui.theme.extendedColors
-import gymetrics.shared.generated.resources.OnlyLogo
+import gymetrics.shared.generated.resources.Gymetrics_Logo
 import gymetrics.shared.generated.resources.Res
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -85,7 +85,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
-                painter = painterResource(Res.drawable.OnlyLogo),
+                painter = painterResource(Res.drawable.Gymetrics_Logo),
                 contentDescription = "Gymetrics logo",
                 modifier = Modifier.size(120.dp).padding(bottom = 20.dp),
             )

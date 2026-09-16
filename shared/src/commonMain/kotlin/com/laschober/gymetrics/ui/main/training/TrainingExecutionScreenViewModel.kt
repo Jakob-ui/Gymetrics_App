@@ -38,7 +38,6 @@ class TrainingExecutionScreenViewModel(
                     TrainingExecutionState.Error("Training not found")
                 }
             } catch (e: Exception) {
-                println("training execution load failed: $e")
                 TrainingExecutionState.Error("Couldn't load this training")
             }
         }
@@ -48,16 +47,10 @@ class TrainingExecutionScreenViewModel(
         viewModelScope.launch {
             try {
                 draftRepository.saveDraft(draft)
-            } catch (e: Exception) {
-                println("training execution: saving draft failed: $e")
-            }
+            } catch (e: Exception) {}
         }
     }
 
-    // Sets active=false and submits the entered weight/reps per exercise. If offline,
-    // TrainingRepository queues it (plan included) and returns normally - so onCompleted() still
-    // runs (and the draft still gets cleared) even before it's actually synced, matching how "Add
-    // training"/"Delete training" already behave in Planning.
     fun completeTraining(plan: List<ExerciseDoneRequestDto>, onCompleted: () -> Unit) {
         if (completing) return
         val trainingId = (state as? TrainingExecutionState.Success)?.training?.id ?: return
@@ -69,7 +62,6 @@ class TrainingExecutionScreenViewModel(
                 draftRepository.clearDraft(trainingId)
                 onCompleted()
             } catch (e: Exception) {
-                println("training execution: complete training failed: $e")
                 completeError = e.message ?: "Couldn't complete training"
             } finally {
                 completing = false

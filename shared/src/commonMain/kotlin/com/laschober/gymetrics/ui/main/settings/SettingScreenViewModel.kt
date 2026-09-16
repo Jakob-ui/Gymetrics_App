@@ -53,9 +53,7 @@ class SettingScreenViewModel(
                 if (response.status.isSuccess()) {
                     profile = response.body<UserProfileDto>()
                 }
-            } catch (e: Exception) {
-                println("settings: loading profile failed: $e")
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -87,7 +85,6 @@ class SettingScreenViewModel(
                     studioError = "Couldn't save studio (${response.status.value})"
                 }
             } catch (e: Exception) {
-                println("settings: saving studio failed: $e")
                 studioError = "Network error"
             } finally {
                 studioSaving = false

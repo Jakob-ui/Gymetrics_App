@@ -69,7 +69,6 @@ class ProfileScreenViewModel(
                     ProfileState.Error("Couldn't load profile (${response.status.value})")
                 }
             } catch (e: Exception) {
-                println("profile load failed: $e")
                 ProfileState.Error("Network error")
             }
             state = next
@@ -125,7 +124,6 @@ class ProfileScreenViewModel(
                     saveError = "Save failed (${response.status.value})"
                 }
             } catch (e: Exception) {
-                println("profile save failed: $e")
                 saveError = "Network error"
             } finally {
                 saving = false

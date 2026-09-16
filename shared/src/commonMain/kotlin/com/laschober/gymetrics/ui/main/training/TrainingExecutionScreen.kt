@@ -107,10 +107,6 @@ private fun TrainingExecutionForm(
     onEntriesChanged: (List<ExerciseEntry>) -> Unit,
     onFinish: (List<ExerciseDoneRequestDto>) -> Unit,
 ) {
-    // A locally saved draft (in-progress, not yet submitted) takes priority per field over
-    // whatever the backend already has stored, since it reflects the most recent typing - but if
-    // there's no draft value for a field, fall back to the backend's saved value instead of
-    // leaving it blank, so previously entered/saved numbers aren't hidden.
     val entries = remember(training.id) {
         training.plan.mapIndexed { index, exercise ->
             val setCount = exercise.sets.coerceAtLeast(1)
@@ -130,7 +126,7 @@ private fun TrainingExecutionForm(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 220.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {

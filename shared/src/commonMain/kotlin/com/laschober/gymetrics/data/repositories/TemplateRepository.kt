@@ -2,6 +2,7 @@ package com.laschober.gymetrics.data.repositories
 
 import com.laschober.gymetrics.data.network.ConnectivityObserver
 import com.laschober.gymetrics.data.remote.dto.GenerateTemplateRequestDto
+import com.laschober.gymetrics.data.remote.dto.GenerationStatus
 import com.laschober.gymetrics.data.remote.dto.TemplateOverviewResponseDto
 import com.laschober.gymetrics.data.remote.dto.TemplateRequestDto
 import com.laschober.gymetrics.data.remote.dto.TemplateResponseDto
@@ -19,6 +20,12 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class NoCachedDataException : Exception("No cached templates")
 
@@ -39,6 +46,27 @@ class TemplateRepository(
     private val detailStore: KStore<Map<String, TemplateResponseDto>>,
     private val connectivityObserver: ConnectivityObserver,
 ) {
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var backgroundWatchJob: Job? = null
+
+    fun watchIfGenerating(templates: List<TemplateOverviewResponseDto>) {
+        if (templates.any { it.generationStatus == GenerationStatus.GENERATING }) {
+            startBackgroundGenerationWatch()
+        }
+    }
+
+    private fun startBackgroundGenerationWatch() {
+        if (backgroundWatchJob?.isActive == true) return
+        backgroundWatchJob = repoScope.launch {
+            while (true) {
+                delay(3000)
+                try {
+                    val fresh = refreshFirstPage(BACKGROUND_WATCH_PAGE_SIZE)
+                    if (fresh.none { it.generationStatus == GenerationStatus.GENERATING }) break
+                } catch (e: Exception) {}
+            }
+        }
+    }
 
     suspend fun firstPage(
         limit: Int,
@@ -141,9 +169,7 @@ class TemplateRepository(
                     val template = response.body<TemplateResponseDto>()
                     updated = updated + (template.id to template)
                 }
-            } catch (e: Exception) {
-                println("template detail prefetch failed for $id: $e")
-            }
+            } catch (e: Exception) {}
         }
         detailStore.set(updated)
     }
@@ -177,6 +203,7 @@ class TemplateRepository(
         check(response.status.isSuccess()) { "Couldn't start AI generation (${response.status.value})" }
         val placeholder = response.body<TemplateResponseDto>()
         store.set(emptyList())
+        startBackgroundGenerationWatch()
         return placeholder
     }
 
@@ -197,5 +224,9 @@ class TemplateRepository(
         check(response.status.isSuccess()) { "Couldn't delete template (${response.status.value})" }
         invalidateTemplateDetail(id)
         store.set(emptyList())
+    }
+
+    private companion object {
+        const val BACKGROUND_WATCH_PAGE_SIZE = 10
     }
 }

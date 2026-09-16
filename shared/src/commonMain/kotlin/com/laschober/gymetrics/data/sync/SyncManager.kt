@@ -40,7 +40,6 @@ class SyncManager(
                 execute(next)
                 true
             } catch (e: Exception) {
-                println("sync: action ${next.id} failed, will retry once back online: $e")
                 false
             }
             if (succeeded) queueRepository.remove(next.id) else return

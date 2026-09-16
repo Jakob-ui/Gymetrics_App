@@ -26,8 +26,6 @@ fun formatDateTime(iso: String): String = try {
     iso
 }
 
-// Parses a backend ISO timestamp down to just the calendar date (device-local timezone), or
-// null if it isn't parseable. Used to bucket trainings by day in the Planning week view.
 @OptIn(ExperimentalTime::class)
 fun parseLocalDate(iso: String): LocalDate? = try {
     Instant.parse(iso).toLocalDateTime(TimeZone.currentSystemDefault()).date

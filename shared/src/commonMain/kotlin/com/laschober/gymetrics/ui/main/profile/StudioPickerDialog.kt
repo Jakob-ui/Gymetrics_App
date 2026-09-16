@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -32,11 +37,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.laschober.gymetrics.data.repositories.StudioRepository
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Check
+import compose.icons.feathericons.MapPin
+import compose.icons.feathericons.Search
+import compose.icons.feathericons.X
 import org.koin.compose.koinInject
+
+private val fieldShape = RoundedCornerShape(16.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +62,7 @@ fun StudioPickerDialog(
     var countries by remember { mutableStateOf<List<String>>(emptyList()) }
     var cities by remember { mutableStateOf<List<String>>(emptyList()) }
     var studios by remember { mutableStateOf<List<String>>(emptyList()) }
+    var studioQuery by remember { mutableStateOf("") }
 
     var selectedCountry by remember { mutableStateOf<String?>(null) }
     var selectedCity by remember { mutableStateOf<String?>(null) }
@@ -73,6 +87,7 @@ fun StudioPickerDialog(
         cities = emptyList()
         selectedCity = null
         studios = emptyList()
+        studioQuery = ""
         val country = selectedCountry ?: return@LaunchedEffect
         loading = true
         error = null
@@ -87,6 +102,7 @@ fun StudioPickerDialog(
 
     LaunchedEffect(selectedCity) {
         studios = emptyList()
+        studioQuery = ""
         val country = selectedCountry
         val city = selectedCity
         if (country == null || city == null) return@LaunchedEffect
@@ -104,71 +120,119 @@ fun StudioPickerDialog(
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Card(
             shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(max = 560.dp),
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Choose your studio", style = MaterialTheme.typography.titleMedium)
-
-                StudioDropdown(
-                    label = "Country",
-                    options = countries,
-                    selected = selectedCountry,
-                    onSelect = { selectedCountry = it },
-                )
-
-                if (selectedCountry != null) {
-                    StudioDropdown(
-                        label = "City",
-                        options = cities,
-                        selected = selectedCity,
-                        onSelect = { selectedCity = it },
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Choose your studio", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "So AI-generated templates know what equipment you have.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                if (selectedCity != null) {
-                    Text(
-                        text = "Studio",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (selectedCountry != null || selectedCity != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        selectedCountry?.let { country ->
+                            StepChip(text = country, onClear = { selectedCountry = null })
+                        }
+                        selectedCity?.let { city ->
+                            StepChip(text = city, onClear = { selectedCity = null })
+                        }
+                    }
+                }
+
+                if (selectedCountry == null) {
+                    StudioDropdown(
+                        label = "Country",
+                        options = countries,
+                        selected = null,
+                        onSelect = { selectedCountry = it },
                     )
-                    if (studios.isEmpty() && !loading) {
-                        Text(
-                            text = "No studios found for this city",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                } else if (selectedCity == null) {
+                    StudioDropdown(
+                        label = "City",
+                        options = cities,
+                        selected = null,
+                        onSelect = { selectedCity = it },
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = studioQuery,
+                            onValueChange = { studioQuery = it },
+                            placeholder = { Text("Search studios") },
+                            leadingIcon = { Icon(FeatherIcons.Search, contentDescription = null) },
+                            singleLine = true,
+                            shape = fieldShape,
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            items(studios) { studio ->
-                                val isSelected = studio == selectedStudio
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(
-                                            if (isSelected) {
-                                                MaterialTheme.colorScheme.primaryContainer
+
+                        val filteredStudios = remember(studios, studioQuery) {
+                            studios.filter { it.contains(studioQuery, ignoreCase = true) }
+                        }
+
+                        if (filteredStudios.isEmpty() && !loading) {
+                            Text(
+                                text = if (studios.isEmpty()) "No studios found for this city" else "No matches",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                items(filteredStudios) { studio ->
+                                    val isSelected = studio == selectedStudio
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                if (isSelected) {
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.surfaceContainer
+                                                },
+                                            )
+                                            .clickable { selectedStudio = studio }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = FeatherIcons.MapPin,
+                                            contentDescription = null,
+                                            tint = if (isSelected) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
                                             } else {
-                                                MaterialTheme.colorScheme.surfaceContainer
+                                                MaterialTheme.colorScheme.onSurfaceVariant
                                             },
+                                            modifier = Modifier.padding(end = 10.dp),
                                         )
-                                        .clickable { selectedStudio = studio }
-                                        .padding(12.dp),
-                                ) {
-                                    Text(
-                                        text = studio,
-                                        color = if (isSelected) {
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
-                                    )
+                                        Text(
+                                            text = studio,
+                                            color = if (isSelected) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = FeatherIcons.Check,
+                                                contentDescription = "Selected",
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -198,6 +262,18 @@ fun StudioPickerDialog(
     }
 }
 
+@Composable
+private fun StepChip(text: String, onClear: () -> Unit) {
+    AssistChip(
+        onClick = onClear,
+        label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        trailingIcon = { Icon(FeatherIcons.X, contentDescription = "Change", modifier = Modifier.padding(0.dp)) },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StudioDropdown(
@@ -214,6 +290,7 @@ private fun StudioDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            shape = fieldShape,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )

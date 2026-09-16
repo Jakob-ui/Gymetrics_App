@@ -39,7 +39,6 @@ class LoginScreenViewModel(
                     contentType(ContentType.Application.Json)
                     setBody(LoginRequestDto(email, password))
                 }
-                println("login status = ${response.status}")
 
                 when (response.status) {
                     HttpStatusCode.OK -> {
@@ -55,7 +54,6 @@ class LoginScreenViewModel(
                         LoginState.Error("Login failed")
                 }
             } catch (e: Exception) {
-                println("Error $e")
                 LoginState.Error("Login failed")
             }
         }

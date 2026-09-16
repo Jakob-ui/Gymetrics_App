@@ -1,8 +1,5 @@
 package com.laschober.gymetrics.ui.main.training
 
-// Per-exercise comparison against the same exercise (matched by index in the plan) of the
-// previous training done with the same template. Only weightDone/repsDone are compared - the
-// backend only stores one number of each per exercise, not one per set.
 enum class Trend { UP, DOWN, SAME, UNKNOWN }
 enum class Overall { PROGRESS, DECLINE, SAME, MIXED, UNKNOWN }
 

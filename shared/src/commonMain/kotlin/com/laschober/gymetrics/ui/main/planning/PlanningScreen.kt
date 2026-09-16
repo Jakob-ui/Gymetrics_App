@@ -137,10 +137,6 @@ private fun WeekPage(
     var retryTick by remember(weekOffset) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
-    // Reloads when this page's week changes, when a training was created/deleted anywhere
-    // (refreshTrigger), or on "Try again" (retryTick). If a result already exists, it stays on
-    // screen (dimmed + thin bar) instead of being replaced by a spinner, and a failure only
-    // shows a snackbar rather than the full error card.
     LaunchedEffect(weekOffset, viewModel.refreshTrigger, retryTick) {
         val hadContent = state is PlanningState.Success
         reloading = true
@@ -156,7 +152,6 @@ private fun WeekPage(
     val weekDates = remember(weekOffset) { viewModel.weekDatesFor(weekOffset) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Fixed-height slot so the bar appearing/disappearing doesn't shift the list.
         Box(Modifier.fillMaxWidth().height(3.dp)) {
             if (reloading && state is PlanningState.Success) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -169,9 +164,6 @@ private fun WeekPage(
                 scope.launch {
                     refreshing = true
                     try {
-                        // getTrainingsForMonth is cache-first, so a plain reload would just serve
-                        // the same cached months again - refreshWeek() explicitly invalidates
-                        // them first, same escape hatch as Templates'/Logbook's pull-to-refresh.
                         when (val result = viewModel.refreshWeek(weekOffset)) {
                             is PlanningState.Success -> state = result
                             is PlanningState.Error -> onShowMessage(result.message)
@@ -455,7 +447,10 @@ private fun DayDetailDialog(
                 TextButton(
                     enabled = !viewModel.deletingTraining,
                     onClick = {
-                        viewModel.deleteTraining(training.id) { pendingDelete = null }
+                        viewModel.deleteTraining(training.id) {
+                            pendingDelete = null
+                            onClose()
+                        }
                     },
                 ) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)

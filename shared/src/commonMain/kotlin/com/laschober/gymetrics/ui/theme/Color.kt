@@ -1,7 +1,6 @@
 package com.laschober.gymetrics.ui.theme
 
 import androidx.compose.ui.graphics.Color
-// --- Light ---
 val primaryLight = Color(0xFF086B5A)
 val onPrimaryLight = Color(0xFFFFFFFF)
 val primaryContainerLight = Color(0xFFA0F2DD)
@@ -38,7 +37,6 @@ val surfaceContainerLight = Color(0xFFE9EFEC)
 val surfaceContainerHighLight = Color(0xFFE3EAE6)
 val surfaceContainerHighestLight = Color(0xFFDEE4E0)
 
-// --- Dark ---
 val primaryDark = Color(0xFF85D6C1)
 val onPrimaryDark = Color(0xFF00382E)
 val primaryContainerDark = Color(0xFF005144)
@@ -75,7 +73,6 @@ val surfaceContainerDark = Color(0xFF1B211F)
 val surfaceContainerHighDark = Color(0xFF252B29)
 val surfaceContainerHighestDark = Color(0xFF303634)
 
-// --- Extended: success (not part of Material's ColorScheme) ---
 val successLight = Color(0xFF1E7D32)
 val onSuccessLight = Color(0xFFFFFFFF)
 val successDark = Color(0xFF7FD98A)

@@ -113,9 +113,6 @@ class TrainingRepository(
         return response.toTrainingList()
     }
 
-    // The backend answers this endpoint with the full detail shape (_id, plan, ...) rather than
-    // the overview one, so this deserializes as TrainingResponseDto and maps down to the overview
-    // shape that the rest of Planning (state, cache, UI) works with everywhere else.
     suspend fun getTrainingsForMonth(year: Int, month: Int): List<TrainingOverviewResponseDto> {
         val key = monthKey(year, month)
         val cachedMonths = monthCacheStore.get() ?: emptyMap()
@@ -132,8 +129,6 @@ class TrainingRepository(
             else -> error("Couldn't load trainings for $year-$month (${response.status.value})")
         }
 
-        // Free bonus: since the full detail already came through, warm the per-id detail cache
-        // with it too, instead of throwing that data away.
         if (details.isNotEmpty()) {
             val currentDetails = detailStore.get() ?: emptyMap()
             detailStore.set(currentDetails + details.associateBy { it.id })
@@ -237,9 +232,7 @@ class TrainingRepository(
                     val result = response.body<List<TrainingResponseDto>>()
                     result.firstOrNull()?.let { updated = updated + (it.id to it) }
                 }
-            } catch (e: Exception) {
-                println("training detail prefetch failed for $id: $e")
-            }
+            } catch (e: Exception) {}
         }
         detailStore.set(updated)
     }

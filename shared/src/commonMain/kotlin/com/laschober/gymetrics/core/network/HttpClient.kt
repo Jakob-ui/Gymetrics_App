@@ -38,7 +38,7 @@ fun buildHttpClient(settingStore: SettingStore, tokenStore: TokenStore) : HttpCl
             refreshTokens {
                 val refresh = tokenStore.refreshToken() ?: return@refreshTokens null
                 val response = client.post("auth/refresh") {
-                    markAsRefreshTokenRequest()                          // keep this call out of the retry loop
+                    markAsRefreshTokenRequest()
                     header(HttpHeaders.Authorization, "Bearer $refresh")
                 }
                 if (!response.status.isSuccess()) {

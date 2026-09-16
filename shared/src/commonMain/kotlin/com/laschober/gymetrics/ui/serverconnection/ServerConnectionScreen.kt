@@ -50,8 +50,8 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Check
 import compose.icons.feathericons.Cloud
 import compose.icons.feathericons.Server
+import gymetrics.shared.generated.resources.Gymetrics_Logo
 import org.jetbrains.compose.resources.painterResource
-import gymetrics.shared.generated.resources.OnlyLogo
 import gymetrics.shared.generated.resources.Res
 import org.jetbrains.compose.resources.vectorResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -88,7 +88,7 @@ fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
-            painter = painterResource(Res.drawable.OnlyLogo),
+            painter = painterResource(Res.drawable.Gymetrics_Logo),
             contentDescription = "Gymetrics logo",
             modifier = Modifier.size(120.dp).padding(bottom = 20.dp)
 

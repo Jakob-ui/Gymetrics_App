@@ -34,7 +34,6 @@ class TrainingDetailScreenViewModel(
                     TrainingDetailState.Error("Training not found")
                 }
             } catch (e: Exception) {
-                println("training detail load failed: $e")
                 TrainingDetailState.Error("Couldn't load this training")
             }
         }

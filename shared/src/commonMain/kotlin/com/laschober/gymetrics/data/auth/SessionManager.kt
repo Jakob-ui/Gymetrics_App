@@ -43,7 +43,6 @@ class SessionManager(
                 } else SessionState.NeedsLogin
             }
         } catch (e: Exception) {
-            println("session check failed: $e")
             SessionState.NeedsLogin
         }
     }

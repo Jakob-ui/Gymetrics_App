@@ -45,9 +45,7 @@ class HomeScreenViewModel(
         viewModelScope.launch {
             try {
                 greetingName = homeRepository.getGreetingName()
-            } catch (e: Exception) {
-                println("home: loading profile failed: $e")
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -71,7 +69,6 @@ class HomeScreenViewModel(
 
                 homeTrainings = HomeTrainingsState.Success(todaysTraining, upcoming)
             } catch (e: Exception) {
-                println("home: loading trainings failed: $e")
                 if (hadContent) transientError = "Couldn't refresh your trainings"
                 else homeTrainings = HomeTrainingsState.Error("Couldn't load your trainings")
             } finally {

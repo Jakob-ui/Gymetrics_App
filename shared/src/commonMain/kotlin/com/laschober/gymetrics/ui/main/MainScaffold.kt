@@ -110,9 +110,6 @@ fun MainScaffold(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // Dismiss whatever's currently showing before queuing the next one - otherwise spamming a
-    // button that shows the same (or any) message just piles up a long queue of banners that all
-    // have to play out one by one instead of the latest one simply replacing the last.
     val showMessage: (String) -> Unit = { msg ->
         scope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()

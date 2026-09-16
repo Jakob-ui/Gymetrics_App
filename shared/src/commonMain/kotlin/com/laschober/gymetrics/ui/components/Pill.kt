@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
-// Small rounded capsule used for status/date badges (e.g. "Active", "Today", a date chip).
 @Composable
 fun Pill(
     text: String,
