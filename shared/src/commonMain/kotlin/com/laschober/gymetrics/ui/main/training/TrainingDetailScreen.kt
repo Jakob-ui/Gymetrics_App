@@ -115,10 +115,11 @@ private fun TrainingDetailContent(current: TrainingResponseDto, previous: Traini
             val exercise = current.plan[index]
             val previousExercise = previous?.plan?.getOrNull(index)
             val comparison = compareExercise(
-                currentWeightDone = exercise.weightDone,
-                currentRepsDone = exercise.repsDone,
-                previousWeightDone = previousExercise?.weightDone,
-                previousRepsDone = previousExercise?.repsDone,
+                currentWeightDone = exercise.setsDone.maxOfOrNull { it.weight },
+                currentRepsDone = exercise.setsDone.sumOf { it.reps }.takeIf { exercise.setsDone.isNotEmpty() },
+                previousWeightDone = previousExercise?.setsDone?.maxOfOrNull { it.weight },
+                previousRepsDone = previousExercise?.setsDone?.sumOf { it.reps }
+                    ?.takeIf { previousExercise.setsDone.isNotEmpty() },
             )
             ExerciseComparisonCard(exercise = exercise, comparison = comparison, hasPrevious = previous != null)
         }
@@ -157,19 +158,55 @@ private fun ExerciseComparisonCard(
 
             Spacer(Modifier.height(8.dp))
 
-            ComparisonRow(
-                label = "Weight",
-                target = "${exercise.weight ?: 0} kg",
-                done = exercise.weightDone?.let { "$it kg" } ?: "-",
-                trend = comparison.weightTrend,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            ComparisonRow(
-                label = "Reps",
-                target = "${exercise.reps} reps",
-                done = exercise.repsDone?.toString() ?: "-",
-                trend = comparison.repsTrend,
-            )
+            if (exercise.setsDone.isEmpty()) {
+                Text(
+                    text = "No sets recorded",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                exercise.setsDone.forEachIndexed { setIndex, set ->
+                    if (setIndex > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Set ${setIndex + 1}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "${exercise.weight ?: 0} kg × ${exercise.reps} reps",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "${set.weight} kg × ${set.reps} reps",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                ComparisonRow(
+                    label = "Best set",
+                    target = "${exercise.weight ?: 0} kg",
+                    done = exercise.setsDone.maxOfOrNull { it.weight }?.let { "$it kg" } ?: "-",
+                    trend = comparison.weightTrend,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                ComparisonRow(
+                    label = "Total reps",
+                    target = "${exercise.reps * exercise.sets} reps",
+                    done = exercise.setsDone.sumOf { it.reps }.toString(),
+                    trend = comparison.repsTrend,
+                )
+            }
         }
     }
 }

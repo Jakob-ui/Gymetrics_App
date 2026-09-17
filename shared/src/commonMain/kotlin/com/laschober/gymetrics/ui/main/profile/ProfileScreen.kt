@@ -99,10 +99,7 @@ fun ProfileScreen(
                     onClose = onBack,
                     onEdit = viewModel::startEditing,
                     onOpenSettings = onOpenSettings,
-                    onLogout = {
-                        viewModel.logout()
-                        onLogoutClick()
-                    },
+                    onLogout = { viewModel.logout(onLogoutClick) },
                 )
             }
     }

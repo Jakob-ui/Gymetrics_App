@@ -49,7 +49,7 @@ val appModule = module {
     single { ConnectivityObserver() }
     single { TokenStore() }
     single { buildHttpClient(get(), get()) }
-    single { SessionManager(get(), get(), get(), get()) }
+    single { SessionManager(get(), get(), get(), get(), get(), get(), get(), get()) }
     single(named("templatesStore")) {
         storeOf<List<TemplateOverviewResponseDto>>(
             file = Path("${platformFilesDir()}/templates.json"),

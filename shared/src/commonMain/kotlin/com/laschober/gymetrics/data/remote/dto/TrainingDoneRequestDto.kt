@@ -3,10 +3,15 @@ package com.laschober.gymetrics.data.remote.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class SetDoneRequestDto(
+    val reps: Int,
+    val weight: Double,
+)
+
+@Serializable
 data class ExerciseDoneRequestDto(
     val title: String,
-    val repsDone: Int? = null,
-    val weightDone: Double? = null,
+    val setsDone: List<SetDoneRequestDto> = emptyList(),
 )
 
 @Serializable

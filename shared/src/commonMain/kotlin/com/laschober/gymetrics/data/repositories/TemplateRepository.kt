@@ -218,6 +218,11 @@ class TemplateRepository(
         store.set(emptyList())
     }
 
+    suspend fun clearCache() {
+        store.set(emptyList())
+        detailStore.set(emptyMap())
+    }
+
     suspend fun deleteTemplate(id: String) {
         check(connectivityObserver.isOnline.value) { "Offline - can't delete a template" }
         val response = client.delete("templates/$id")

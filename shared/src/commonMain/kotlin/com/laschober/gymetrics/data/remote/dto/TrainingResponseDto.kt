@@ -4,13 +4,18 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class SetDoneResponseDto(
+    val reps: Int,
+    val weight: Double,
+)
+
+@Serializable
 data class TrainingExerciseDto(
     val title: String,
     val reps: Int,
     val sets: Int = 0,
-    val repsDone: Int? = null,
     val weight: Double? = null,
-    val weightDone: Double? = null,
+    val setsDone: List<SetDoneResponseDto> = emptyList(),
     val factor: Double? = null,
 )
 

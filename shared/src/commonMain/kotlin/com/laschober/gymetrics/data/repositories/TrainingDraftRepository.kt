@@ -17,4 +17,8 @@ class TrainingDraftRepository(
         val current = store.get() ?: return
         if (trainingId in current) store.set(current - trainingId)
     }
+
+    suspend fun clearCache() {
+        store.set(emptyMap())
+    }
 }

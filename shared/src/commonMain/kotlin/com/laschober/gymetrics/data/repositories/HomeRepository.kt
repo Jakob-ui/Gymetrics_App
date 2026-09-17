@@ -24,4 +24,8 @@ class HomeRepository(
     suspend fun cacheProfile(profile: UserProfileDto) {
         profileStore.set(listOf(profile))
     }
+
+    suspend fun clearCache() {
+        profileStore.set(emptyList())
+    }
 }

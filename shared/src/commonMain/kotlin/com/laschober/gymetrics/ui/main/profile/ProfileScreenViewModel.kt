@@ -131,5 +131,10 @@ class ProfileScreenViewModel(
         }
     }
 
-    fun logout() = sessionManager.logout()
+    fun logout(onLoggedOut: () -> Unit) {
+        viewModelScope.launch {
+            sessionManager.logout()
+            onLoggedOut()
+        }
+    }
 }

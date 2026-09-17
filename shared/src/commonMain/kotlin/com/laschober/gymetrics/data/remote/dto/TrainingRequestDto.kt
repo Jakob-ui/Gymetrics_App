@@ -12,6 +12,5 @@ data class TrainingRequestDto(
 @Serializable
 data class TrainingExerciseUpdateRequestDto(
     @SerialName("_id") val id: String,
-    val repsDone: Int,
-    val weightDone: Double,
+    val setsDone: List<SetDoneRequestDto>,
 )

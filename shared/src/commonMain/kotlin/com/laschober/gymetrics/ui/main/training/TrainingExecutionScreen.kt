@@ -39,8 +39,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.laschober.gymetrics.data.local.ExerciseEntry
+import com.laschober.gymetrics.data.local.SetEntry
 import com.laschober.gymetrics.data.local.TrainingDraft
 import com.laschober.gymetrics.data.remote.dto.ExerciseDoneRequestDto
+import com.laschober.gymetrics.data.remote.dto.SetDoneRequestDto
 import com.laschober.gymetrics.data.remote.dto.TrainingExerciseDto
 import com.laschober.gymetrics.data.remote.dto.TrainingResponseDto
 import com.laschober.gymetrics.ui.components.Pill
@@ -99,6 +101,7 @@ fun TrainingExecutionScreen(
     }
 }
 
+
 @Composable
 private fun TrainingExecutionForm(
     training: TrainingResponseDto,
@@ -111,13 +114,17 @@ private fun TrainingExecutionForm(
         training.plan.mapIndexed { index, exercise ->
             val setCount = exercise.sets.coerceAtLeast(1)
             val saved = restoredDraft?.exercises?.getOrNull(index)
-            val weightDone = saved?.weightDone?.takeIf { it.isNotBlank() }
-                ?: exercise.weightDone?.toString().orEmpty()
-            val repsDone = List(setCount) { i ->
-                saved?.repsDone?.getOrNull(i)?.takeIf { it.isNotBlank() }
-                    ?: (if (i == 0) exercise.repsDone?.toString().orEmpty() else "")
+            val sets = List(setCount) { i ->
+                val savedSet = saved?.sets?.getOrNull(i)
+                val existingDone = exercise.setsDone.getOrNull(i)
+                SetEntry(
+                    weight = savedSet?.weight?.takeIf { it.isNotBlank() }
+                        ?: existingDone?.weight?.toString().orEmpty(),
+                    reps = savedSet?.reps?.takeIf { it.isNotBlank() }
+                        ?: existingDone?.reps?.toString().orEmpty(),
+                )
             }
-            mutableStateOf(ExerciseEntry(weightDone = weightDone, repsDone = repsDone))
+            mutableStateOf(ExerciseEntry(sets = sets))
         }
     }
 
@@ -152,20 +159,27 @@ private fun TrainingExecutionForm(
                 ExerciseEntryCard(
                     exercise = exercise,
                     entry = entryState.value,
-                    onWeightDoneChange = {
-                        entryState.value = entryState.value.copy(weightDone = it)
+                    onWeightChange = { setIndex, value ->
+                        entryState.value = entryState.value.copy(
+                            sets = entryState.value.sets.toMutableList().apply {
+                                this[setIndex] = this[setIndex].copy(weight = value)
+                            },
+                        )
                         persist()
                     },
-                    onRepsDoneChange = { setIndex, value ->
+                    onRepsChange = { setIndex, value ->
                         entryState.value = entryState.value.copy(
-                            repsDone = entryState.value.repsDone.toMutableList().apply { this[setIndex] = value },
+                            sets = entryState.value.sets.toMutableList().apply {
+                                this[setIndex] = this[setIndex].copy(reps = value)
+                            },
                         )
                         persist()
                     },
                     onFillTargets = {
                         entryState.value = ExerciseEntry(
-                            weightDone = exercise.weight?.toString().orEmpty(),
-                            repsDone = List(entryState.value.repsDone.size) { exercise.reps.toString() },
+                            sets = List(entryState.value.sets.size) {
+                                SetEntry(weight = exercise.weight?.toString().orEmpty(), reps = exercise.reps.toString())
+                            },
                         )
                         persist()
                     },
@@ -180,8 +194,12 @@ private fun TrainingExecutionForm(
                         val entry = entries[index].value
                         ExerciseDoneRequestDto(
                             title = exercise.title,
-                            repsDone = entry.repsDone.firstOrNull()?.toIntOrNull(),
-                            weightDone = entry.weightDone.toDoubleOrNull(),
+                            setsDone = entry.sets.mapNotNull { set ->
+                                val reps = set.reps.toIntOrNull()
+                                val weight = set.weight.toDoubleOrNull()
+                                if (reps == null && weight == null) null
+                                else SetDoneRequestDto(reps = reps ?: 0, weight = weight ?: 0.0)
+                            },
                         )
                     }
                     onFinish(plan)
@@ -202,8 +220,8 @@ private fun TrainingExecutionForm(
 private fun ExerciseEntryCard(
     exercise: TrainingExerciseDto,
     entry: ExerciseEntry,
-    onWeightDoneChange: (String) -> Unit,
-    onRepsDoneChange: (setIndex: Int, value: String) -> Unit,
+    onWeightChange: (setIndex: Int, value: String) -> Unit,
+    onRepsChange: (setIndex: Int, value: String) -> Unit,
     onFillTargets: () -> Unit,
 ) {
     Card(
@@ -213,37 +231,34 @@ private fun ExerciseEntryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = exercise.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = exercise.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Target: ${exercise.weight ?: 0} kg × ${exercise.reps} reps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            TableHeaderRow()
+            SetTableHeaderRow()
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            TableEntryRow(
-                label = "Weight",
-                target = "${exercise.weight ?: 0} kg",
-                value = entry.weightDone,
-                onValueChange = onWeightDoneChange,
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Next,
-            )
-
-            entry.repsDone.forEachIndexed { setIndex, value ->
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                TableEntryRow(
-                    label = "Set ${setIndex + 1}",
-                    target = "${exercise.reps} reps",
-                    value = value,
-                    onValueChange = { onRepsDoneChange(setIndex, it) },
-                    keyboardType = KeyboardType.Number,
-                    imeAction = if (setIndex == entry.repsDone.lastIndex) ImeAction.Done else ImeAction.Next,
+            entry.sets.forEachIndexed { setIndex, set ->
+                if (setIndex > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SetEntryRow(
+                    setNumber = setIndex + 1,
+                    weight = set.weight,
+                    reps = set.reps,
+                    onWeightChange = { onWeightChange(setIndex, it) },
+                    onRepsChange = { onRepsChange(setIndex, it) },
+                    repsImeAction = if (setIndex == entry.sets.lastIndex) ImeAction.Done else ImeAction.Next,
                 )
             }
 
@@ -256,18 +271,18 @@ private fun ExerciseEntryCard(
 }
 
 @Composable
-private fun TableHeaderRow() {
+private fun SetTableHeaderRow() {
     Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp)) {
         Spacer(Modifier.weight(1f))
         Text(
-            text = "TARGET",
+            text = "WEIGHT",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "DONE",
+            text = "REPS",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -277,40 +292,43 @@ private fun TableHeaderRow() {
 }
 
 @Composable
-private fun TableEntryRow(
-    label: String,
-    target: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    keyboardType: KeyboardType,
-    imeAction: ImeAction,
+private fun SetEntryRow(
+    setNumber: Int,
+    weight: String,
+    reps: String,
+    onWeightChange: (String) -> Unit,
+    onRepsChange: (String) -> Unit,
+    repsImeAction: ImeAction,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = label,
+            text = "Set $setNumber",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            text = target,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f),
-        )
         OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
+            value = weight,
+            onValueChange = onWeightChange,
             singleLine = true,
             shape = cellShape,
             placeholder = { Text("–", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+        )
+        OutlinedTextField(
+            value = reps,
+            onValueChange = onRepsChange,
+            singleLine = true,
+            shape = cellShape,
+            placeholder = { Text("–", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = repsImeAction),
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
         )
     }
 }

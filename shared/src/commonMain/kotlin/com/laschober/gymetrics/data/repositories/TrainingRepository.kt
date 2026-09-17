@@ -247,6 +247,13 @@ class TrainingRepository(
         if (id in current) detailStore.set(current - id)
     }
 
+    suspend fun clearCache() {
+        store.set(emptyList())
+        monthCacheStore.set(emptyMap())
+        detailStore.set(emptyMap())
+        nextTrainingCacheStore.set(emptyList())
+    }
+
     suspend fun getNextTraining(): TrainingOverviewResponseDto? {
         check(connectivityObserver.isOnline.value) { "Offline - can't load your next training" }
         val response = client.get("training/nextTraining")
