@@ -1,0 +1,20 @@
+shared/src/commonMain/kotlin/com/laschober/gymetrics/data/auth/SessionManager.kt
+  h_0b2f90255e6749 18-19,45,47,49,52-57,59-60
+  h_0b2f90255e6749 46,61-62
+shared/src/commonMain/kotlin/com/laschober/gymetrics/ui/serverconnection/ServerConnectionViewModel.kt
+  h_0b2f90255e6749 84-85
+shared/src/commonMain/kotlin/com/laschober/gymetrics/ui/serverconnection/ServerConnectionScreen.kt
+  h_0b2f90255e6749 160-165
+  h_0b2f90255e6749 166-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5dbb2153b5343282b7abd18d1e2ee492ff72dc3c",
+  "prompts": {},
+  "humans": {
+    "h_0b2f90255e6749": {
+      "author": "Jakob-ui <Jakoblaschober@gmail.com>"
+    }
+  }
+}
