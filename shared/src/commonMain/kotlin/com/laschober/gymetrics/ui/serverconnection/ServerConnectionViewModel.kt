@@ -81,10 +81,7 @@ class ServerConnectionViewModel(
 
     fun getSavedUrl(): String = settingStore.getUrl() ?: ""
 
-    fun storeServerUrl() {
-        val current = state
-        if (current is ServerConnectionState.Success) {
-            settingStore.saveUrl(current.url)
-        }
+    fun storeServerUrl(urlToSave: String) {
+        settingStore.saveUrl(urlToSave)
     }
 }

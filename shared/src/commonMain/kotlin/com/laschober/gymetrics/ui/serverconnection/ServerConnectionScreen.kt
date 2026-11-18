@@ -118,7 +118,6 @@ fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (state is ServerConnectionState.Success) {
-                            viewModel.storeServerUrl()
                             onContinue()
                         } else {
                             viewModel.checkConnection(serverUrl)
@@ -158,7 +157,14 @@ fun ServerConnectionScreen(viewModel: ServerConnectionViewModel = koinViewModel(
         }
 
         Button(
-            onClick = {viewModel.storeServerUrl(); onContinue()},
+            onClick = {val finalUrl = if (mode == ServerMode.Custom) {
+                (state as? ServerConnectionState.Success)?.url ?: serverUrl
+            } else {
+                Config.OFFICIAL_SERVER_URL
+            }
+                viewModel.storeServerUrl(finalUrl)
+                onContinue()
+            },
             enabled = state is ServerConnectionState.Success,
             modifier = Modifier.fillMaxWidth().height(50.dp),
         ) {

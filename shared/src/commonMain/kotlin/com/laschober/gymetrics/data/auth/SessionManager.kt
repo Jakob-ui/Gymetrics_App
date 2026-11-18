@@ -15,6 +15,8 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
+import com.laschober.gymetrics.data.remote.dto.AuthResponseDto
+import io.ktor.client.call.body
 
 class SessionManager(
     private val client: HttpClient,
@@ -40,15 +42,24 @@ class SessionManager(
 
         return try {
             val response = client.get("auth/validate")
-            if (response.status.isSuccess()) SessionState.Authenticated
-            else {
+            if (response.status.isSuccess()) {
+                SessionState.Authenticated
+            } else {
                 val refresh = tokenStore.refreshToken()
-                val response = client.post("auth/refresh") {
+                val refreshResponse = client.post("auth/refresh") {
                     header(HttpHeaders.Authorization, "Bearer $refresh")
                 }
-                if (response.status.isSuccess()){
+                if (refreshResponse.status.isSuccess()) {
+
+                    val auth = refreshResponse.body<AuthResponseDto>()
+                    tokenStore.saveTokens(auth.token, auth.refreshToken)
+                    client.authProvider<BearerAuthProvider>()?.clearToken()
+
                     SessionState.Authenticated
-                } else SessionState.NeedsLogin
+                } else {
+                    tokenStore.clear()
+                    SessionState.NeedsLogin
+                }
             }
         } catch (e: Exception) {
             SessionState.NeedsLogin
