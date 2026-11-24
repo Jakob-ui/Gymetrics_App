@@ -12,6 +12,7 @@ class Destinations {
     @Serializable data object LogbookRoute
     @Serializable data object PlanningRoute
     @Serializable data object TemplateRoute
+    @Serializable data object SettingsRoute
 
     @Serializable data class TemplateDetailRoute(val id: String, val title: String)
     @Serializable data object CreateTemplateRoute

@@ -1,14 +1,11 @@
 package com.laschober.gymetrics.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -69,7 +66,6 @@ import com.laschober.gymetrics.ui.main.home.HomeScreen
 import com.laschober.gymetrics.ui.main.logbook.TrainingScreen
 import com.laschober.gymetrics.ui.main.planning.PlanningScreen
 import com.laschober.gymetrics.ui.main.profile.ProfileScreen
-import com.laschober.gymetrics.ui.main.settings.SettingScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreen
 import com.laschober.gymetrics.ui.main.templates.TemplateScreenViewModel
 import com.laschober.gymetrics.ui.main.templates.detail.TemplateFormScreen
@@ -104,6 +100,7 @@ fun MainScaffold(
     connectivityObserver: ConnectivityObserver = koinInject(),
     syncManager: SyncManager = koinInject(),
     onLoggedOut: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -120,7 +117,6 @@ fun MainScaffold(
     val name = settingStore.getName().orEmpty()
 
     var showProfile by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
 
     val isCreateTemplate = currentDestination?.hasRoute(Destinations.CreateTemplateRoute::class) == true
     val isTemplateDetail = currentDestination?.hasRoute(Destinations.TemplateDetailRoute::class) == true
@@ -280,15 +276,15 @@ fun MainScaffold(
                             showProfile = false
                             onLoggedOut()
                         },
-                        onOpenSettings = { showSettings = true },
+                        onOpenSettings = {
+                            showProfile = false
+                            onOpenSettings()
+                        },
                     )
                 }
             }
         }
 
-        if (showSettings) {
-            SettingsOverlay(onClose = { showSettings = false })
-        }
     }
 }
 
@@ -345,29 +341,6 @@ private fun FloatingNavBar(
         }
     }
 }
-
-@Composable
-private fun SettingsOverlay(onClose: () -> Unit) {
-    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
-
-    Dialog(
-        onDismissRequest = { visible.targetState = false },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        AnimatedVisibility(
-            visibleState = visible,
-            enter = slideInHorizontally(animationSpec = tween(260), initialOffsetX = { it }),
-            exit = slideOutHorizontally(animationSpec = tween(150), targetOffsetX = { it }),
-        ) {
-            SettingScreen(onBack = { visible.targetState = false })
-        }
-    }
-
-    LaunchedEffect(visible.isIdle) {
-        if (visible.isIdle && !visible.currentState) onClose()
-    }
-}
-
 
 @Composable
 private fun InfoBadges(isOnline: Boolean, pendingCount: Int, expanded: Boolean, onClick: () -> Unit) {
