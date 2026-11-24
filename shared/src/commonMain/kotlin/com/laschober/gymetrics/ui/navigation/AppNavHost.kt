@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import com.laschober.gymetrics.ui.auth.login.LoginScreen
 import com.laschober.gymetrics.ui.auth.register.RegisterScreen
 import com.laschober.gymetrics.ui.main.MainScaffold
+import com.laschober.gymetrics.ui.main.settings.SettingScreen
 import com.laschober.gymetrics.ui.serverconnection.ServerConnectionScreen
 
 @Composable
@@ -23,7 +24,7 @@ fun AppNavHost(
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
+        popExitTransition = { ExitTransition.KeepUntilTransitionsFinished },
     ) {
         composable<Destinations.ServerConnectionRoute> {
             ServerConnectionScreen(
@@ -51,8 +52,12 @@ fun AppNavHost(
                 },
             )
         }
+        composable<Destinations.SettingsRoute> {
+            SettingScreen(onBack = { navController.popBackStack() })
+        }
         composable<Destinations.MainRoute> {
             MainScaffold(
+                onOpenSettings = { navController.navigate(Destinations.SettingsRoute) },
                 onLoggedOut = {
                     navController.navigate(Destinations.LoginRoute) {
                         popUpTo(Destinations.MainRoute) { inclusive = true }
