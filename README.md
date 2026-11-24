@@ -15,8 +15,16 @@
   <a href="https://gymetrics.at">gymetrics.at</a>
 </p>
 
-This repo is the mobile app. The backend (NestJS, MongoDB, a Python scraper and the AI agent) lives in Gymetrics-Backend.
+This repo is the mobile app. The backend (NestJS, MongoDB and the Python scraper) lives in Gymetrics-Backend.
 
+Running it
+
+1. Backend. You need a running Gymetrics Backend first. Setup with Docker Compose is described in the [backend](https://github.com/Jakob-ui/Gymetrics-Backend) repo. There's also a compose generator, where you can choose which services you want on [gymetrics.at](https://gymetrics.at).
+
+2. App.​
+* Android: download the latest APK from Releases. Needs Android 14 or newer.
+* iOS build it yourself:​ open iosApp/ in Xcode and run  ```./gradlew :androidApp:assembleDebug``` from there.​
+* On first launch, enter your server URL, then register.
 
 ### Why I built this.
 
@@ -61,6 +69,7 @@ The app only ever talks to the backend. The backend stores everything in MongoDB
 
 A more detailed diagram with the data model is in the [backend repo](https://github.com/Jakob-ui/Gymetrics-Backend)
 
+
 ### Inside the app
 
 ```mermaid
@@ -91,11 +100,12 @@ iosApp/            ← iOS entry point (Xcode project)
 
 ### Decisions I made and why
 
-Kotlin Multiplatform with a shared Compose UI. One codebase for Android and iOS, including the UI. I choose this framework because i think it's very interesting. It compiles natevily on iOS and runs in a JVM on Android. Also it was a good oportunity to learn Kotlin.
+Kotlin Multiplatform with a shared Compose UI: one codebase for Android and iOS, including the UI. I chose this framework because I find it very interesting. It compiles natively on iOS and runs on the JVM on Android. It was also a great opportunity to learn Kotlin.
 
-In the beginning I startet with reading some documentation and creating just the welcome screen and the state machine behind the JWT token storage logic and the http interceptor with Ktor. I decided not to use dependency injection right at the start to understand the fundamentals, but of course planned to use it later. I wanted to understand the problem before using a tool that solves it.
+In the beginning, I started by reading documentation and creating the welcome screen, the state machine behind the JWT token storage logic, and the HTTP interceptor with Ktor. I decided not to use dependency injection at the start because I wanted to understand the fundamentals first, although I planned to introduce it later. I wanted to understand the problem before using a tool designed to solve it.
 
-Of course I also use AI to help me with coding but decided to conduct a little experiment with a M4 mac i had laying around. So I installed [OMLX](https://omlx.ai/) as a solution to host local models on the mac and equiped it with a vpn so I could call the api even when I'm not at home. Then i combined a quantized Qwen3-Coder model with a [Context7](https://context7.com/) mcp connector using the current kmp documentation to provide me with uptodate coding solutions. That worked actually great for the early stages of the developement process, as a fronted wrapper I ran the sadly no longer maintained cscode extention continue, because it provided me with every tool I needed. Sadly VS-Code doesnt actually provide good robust support for locally hosted coding models and I didn't want to use some agentic tool like open code. After a little bit of time developing with my setup the context got to big for my 16gb macbook and i had to switch to claude.
+Of course, I also used AI to help me code, but I decided to conduct a small experiment with an M4 Mac I had lying around. I installed [OMLX](https://omlx.ai/) to host local models on the Mac and set up a VPN so I could call the API even when I was away from home. I then combined a quantized Qwen3-Coder model with a [Context7](https://context7.com/) MCP connector, using the current KMP documentation to provide up-to-date coding solutions. This worked very well during the early stages of development. As a frontend wrapper, I used the sadly no-longer-maintained VS Code extension Continue because it provided every tool I needed. Unfortunately, VS Code does not offer robust support for locally hosted coding models, and I did not want to use an agentic tool such as OpenCode. After developing with this setup for a while, the context became too large for my 16 GB MacBook, so I had to switch to Claude.
+
 
 #### For storing different things I chose: 
 
@@ -106,69 +116,44 @@ Of course I also use AI to help me with coding but decided to conduct a little e
 
 * A queue for offline writes. If you create, delete or complete a training while offline, the action is stored in a persistent queue (a sealed PendingAction type saved to storage). The SyncManager listens for connectivity changes and replays the queue in order once you're back online. If one action fails, it stops there instead of skipping ahead, because the order matters (you can't complete a training the server doesn't know about yet). 
 
+
 #### AI implementation
 
-AI generation runs in the background. Small local models are slow, and the app uses a 10 second request timeout. So the backend answers right away with a template marked as generating and does the actual work in the background. The app checks every 3 seconds until it's done, and you can leave the screen in the meantime.
-
-Tech stack
-
-​
-​
-Language
-Kotlin 2.4
-UI
-Compose Multiplatform 1.11, Material 3, type-safe Navigation Compose
-Networking
-Ktor client 3.5 (content negotiation, bearer auth, logging)
-DI
-Koin 4.2
-Local storage
-KStore (cache, offline queue), KVault (tokens), Multiplatform Settings
-Other
-kotlinx.serialization, kotlinx.datetime, coroutines / StateFlow, Reorderable
-CI
-GitHub Actions: builds the APK and publishes a release for every v* tag
-Backend
-NestJS, MongoDB, Python (Flask), Ollama, MCP, Docker. See the backend repo
+For AI generative content I focused on a distinct strategy. AI generation runs in the background (on my deployed version it's a seperate Ollama docker). Small local models are slow (especially on old hardware), and the app uses a 10 second request timeout. So the backend answers right away with a template marked as generating and does the actual work in the background. The app checks every 3 seconds until it's done, and you can leave the screen in the meantime.
 
 
-What I'd do differently
+### Tech stack
 
-<!-- TODO: These come from your Notion "App Code Tasks". Rephrase them how you'd say it.
-     This section shows you can look at your own code critically, which is good for applications. -->
+##### Language
+* Kotlin 2.4
+##### UI
+* Compose Multiplatform 1.11
+* Material 3
+##### Local storage
+* KStore: Cache and offline request queue
+* KVault: Secure token storage
+* Multiplatform Settings: Application settings and preferences
+##### CI
+* GitHub Actions: builds the APK and publishes a release for every v* tag. 
+* Branch protection rules: Configured to protect important branches.
 
-The caching logic is duplicated. Every repository has its own version of "load from cache, fetch, write back". I'd pull that into one generic helper.
-The refresh flow needs another look. Token refresh happens in two places (on app start in SessionManager and in the Ktor auth plugin), and there's still a bug in there.
-Only one gym chain is supported. The scraper only knows FitInn right now.
-<!-- TODO: Anything else? e.g. tests, iOS testing, error handling -->
+
+### What I'd do differently
+
+If I would build this application again I would do some things differently:
+* Every repository has its own version of "load from cache, fetch, write back". I'd pull that into one generic helper and distinguish between different actions it has to take
+* I would'nt choose to do the same UI components for android and iOS beacause it just feels a little bit sluggish and off on the iOS version.
+* Next time I would use a mirrored variant of the online database (didn't went as planned because I used a no-Sql database in the backend, next time maybe a relational database :) )
+* I also would add tests in the CI/CD Pipeline to validate every function.
+* Adding one place of ground truth in the future (jumped a little bit to much from note tool to note tool in this project, which ended up in very confusing docs)
 
 
-What's next
+### What's next/Features I want to add (let's see)
 
 Different workout modes, e.g. going through exercises one by one with a running timer
 Time tracking per workout
 Support for more gyms
 Invalidating JWTs on logout (blacklist on the backend)
-Icons for templates
+Icons/Pictures for templates
 An easier way to move a training to another day
-<!-- TODO: Statistics and an admin panel are also in your Notion. Add them if they're still planned. -->
 
-
-Running it
-
-1. Backend. You need a running Gymetrics backend first. Setup with Docker Compose is described in the backend repo. There's also a compose generator on gymetrics.at.
-
-2. App.​
-
-Android: download the latest APK from Releases. Needs Android 14 or newer.
-Build it yourself:​
-bash```bash
-./gradlew :androidApp:assembleDebug
-iOS: open iosApp/ in Xcode and run it from there.
-<!-- TODO: Is iOS tested? If not, say so honestly, e.g. "iOS builds, but I've mostly tested on Android." -->
-
-On first launch, enter your server URL, then register.
-
-
-<!-- TODO: Your name + links. Delete what you don't want. -->
-Made by Jakob · LinkedIn · GitHub
