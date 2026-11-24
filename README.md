@@ -26,12 +26,12 @@ Running it
 * iOS build it yourself:​ open iosApp/ in Xcode and run  ```./gradlew :androidApp:assembleDebug``` from there.​
 * On first launch, enter your server URL, then register.
 
-### Why I built this.
+## Why I built this.
 
 Mostly I've built it as an University Project to learn more about Hybrid Mobile Developement with Kotlin Multiplatform. Also as someone with an IT-background from my bachelorsdegree, I know how many applications are not very secure and respect your data. For this reason I startet out to create a rather simple looking Frontend App that can connect to a backend and database runnning on ones own server. In late August 2026 I started the app, which was also the first time I wrote Kotlin. I had never used Kotlin Multiplatform before either, so a big part of this project was figuring out how KMP actually works: source sets, expect/actual, coroutines, Compose state. It was very important for me to also have a caching option to also read Data when my device is offline.
 
 
-### What it does
+## What it does
 
 Connect to your own server. On first launch you enter your server URL (via a registered Domain or just use a VPN). The app pings it and checks that the response really comes from a Gymetrics backend, not just that it returns a 200 (pretty much everything returns 200). For not that tech savy persons I also provide a ready made solution under "app.gymetrics.at", which defeats the purpose a little bit, but is handy to just try the app.
 Then you can log in (or register an account). Access and refresh tokens are stored in the platform's secure storage, and expired tokens are refreshed automatically.
@@ -41,7 +41,7 @@ You then can schedule trainings from your templates on specific days and see the
 As mentioned before everything works offline. Everything you've loaded is cached on the device. Creating, deleting and completing trainings also works offline and syncs once you're back online.
 
 
-### Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -70,7 +70,7 @@ The app only ever talks to the backend. The backend stores everything in MongoDB
 A more detailed diagram with the data model is in the [backend repo](https://github.com/Jakob-ui/Gymetrics-Backend)
 
 
-### Inside the app
+## Inside the app
 
 ```mermaid
 flowchart TD
@@ -98,7 +98,7 @@ iosApp/            ← iOS entry point (Xcode project)
 ```
 
 
-### Decisions I made and why
+## Decisions I made and why
 
 Kotlin Multiplatform with a shared Compose UI: one codebase for Android and iOS, including the UI. I chose this framework because I find it very interesting. It compiles natively on iOS and runs on the JVM on Android. It was also a great opportunity to learn Kotlin.
 
@@ -107,7 +107,7 @@ In the beginning, I started by reading documentation and creating the welcome sc
 Of course, I also used AI to help me code, but I decided to conduct a small experiment with an M4 Mac I had lying around. I installed [OMLX](https://omlx.ai/) to host local models on the Mac and set up a VPN so I could call the API even when I was away from home. I then combined a quantized Qwen3-Coder model with a [Context7](https://context7.com/) MCP connector, using the current KMP documentation to provide up-to-date coding solutions. This worked very well during the early stages of development. As a frontend wrapper, I used the sadly no-longer-maintained VS Code extension Continue because it provided every tool I needed. Unfortunately, VS Code does not offer robust support for locally hosted coding models, and I did not want to use an agentic tool such as OpenCode. After developing with this setup for a while, the context became too large for my 16 GB MacBook, so I had to switch to Claude.
 
 
-#### For storing different things I chose: 
+### For storing different things I chose: 
 
 * Tokens in secure storage, not in settings. Access and refresh tokens go into KVault, which uses the Keychain on iOS and encrypted storage on Android. 
 * Normal preferences (theme, server URL) go into plain settings. 
@@ -117,28 +117,28 @@ Of course, I also used AI to help me code, but I decided to conduct a small expe
 * A queue for offline writes. If you create, delete or complete a training while offline, the action is stored in a persistent queue (a sealed PendingAction type saved to storage). The SyncManager listens for connectivity changes and replays the queue in order once you're back online. If one action fails, it stops there instead of skipping ahead, because the order matters (you can't complete a training the server doesn't know about yet). 
 
 
-#### AI implementation
+### AI implementation
 
 For AI generative content I focused on a distinct strategy. AI generation runs in the background (on my deployed version it's a seperate Ollama docker). Small local models are slow (especially on old hardware), and the app uses a 10 second request timeout. So the backend answers right away with a template marked as generating and does the actual work in the background. The app checks every 3 seconds until it's done, and you can leave the screen in the meantime.
 
 
-### Tech stack
+## Tech stack
 
-##### Language
+#### Language
 * Kotlin 2.4
-##### UI
+#### UI
 * Compose Multiplatform 1.11
 * Material 3
-##### Local storage
+#### Local storage
 * KStore: Cache and offline request queue
 * KVault: Secure token storage
 * Multiplatform Settings: Application settings and preferences
-##### CI
+#### CI
 * GitHub Actions: builds the APK and publishes a release for every v* tag. 
 * Branch protection rules: Configured to protect important branches.
 
 
-### What I'd do differently
+## What I'd do differently
 
 If I would build this application again I would do some things differently:
 * Every repository has its own version of "load from cache, fetch, write back". I'd pull that into one generic helper and distinguish between different actions it has to take
@@ -148,7 +148,7 @@ If I would build this application again I would do some things differently:
 * Adding one place of ground truth in the future (jumped a little bit to much from note tool to note tool in this project, which ended up in very confusing docs)
 
 
-### What's next/Features I want to add (let's see)
+## What's next/Features I want to add (let's see)
 
 Different workout modes, e.g. going through exercises one by one with a running timer
 Time tracking per workout
@@ -157,3 +157,10 @@ Invalidating JWTs on logout (blacklist on the backend)
 Icons/Pictures for templates
 An easier way to move a training to another day
 
+## Branding
+
+The Gymetrics name and logo are not covered by the software license and may not be used to promote derivative projects without permission.
+
+## License
+
+This project is licensed under the Apache License 2.0.. See the [LICENSE](LICENSE) file for details.
